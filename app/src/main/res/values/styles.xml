@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.StrangerHelp" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#171717</item>
+        <item name="android:navigationBarColor">#171717</item>
+    </style>
+</resources>

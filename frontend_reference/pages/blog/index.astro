@@ -1,0 +1,158 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Navbar from "../../components/Navbar.astro";
+import Footer from "../../components/Footer.astro";
+
+const blogs = [
+  {
+    slug: "strangers-meet",
+    title: "Strangers Meet: Unite with People Who Care About Real-World Problems",
+    excerpt: "Organize plantation drives, cleanups, discussions, workshops, and community events. Bring strangers together to create real impact.",
+    date: "2026-06-29",
+    category: "Features",
+  },
+  {
+    slug: "karma-wallet",
+    title: "Karma Wallet: Earn, Donate, and Withdraw — Your Trust Currency",
+    excerpt: "Every task you complete earns Karma. Use it to withdraw cash, boost your tasks, or donate to real causes. Here's how it works.",
+    date: "2026-06-28",
+    category: "Features",
+  },
+  {
+    slug: "how-strangerhelp-works",
+    title: "How StrangerHelp Works: Get Tasks Done by Verified Helpers Near You",
+    excerpt: "Learn how our hyperlocal task marketplace connects people who need errands done with trusted helpers in their area.",
+    date: "2026-06-20",
+    category: "Guide",
+  },
+  {
+    slug: "why-trust-matters",
+    title: "Why Trust & Verification Matter in Peer-to-Peer Task Platforms",
+    excerpt: "How our ID verification, karma system, and reviews create a safe environment for strangers helping strangers.",
+    date: "2026-06-18",
+    category: "Trust & Safety",
+  },
+  {
+    slug: "top-tasks-you-can-post",
+    title: "10 Tasks You Didn't Know You Could Outsource to a Stranger",
+    excerpt: "From standing in government queues to collecting parcels — discover creative ways people use StrangerHelp every day.",
+    date: "2026-06-15",
+    category: "Tips",
+  },
+  {
+    slug: "earn-money-as-helper",
+    title: "How to Earn ₹2000+ Daily as a StrangerHelp Helper",
+    excerpt: "A practical guide to maximizing your earnings by claiming tasks, building trust score, and getting repeat clients.",
+    date: "2026-06-12",
+    category: "Earning",
+  },
+  {
+    slug: "safety-tips-for-helpers",
+    title: "Safety Tips: What Every Helper Should Know Before Claiming a Task",
+    excerpt: "Protect yourself while helping others. Essential safety guidelines for meeting strangers and completing tasks.",
+    date: "2026-06-10",
+    category: "Trust & Safety",
+  },
+  {
+    slug: "building-strangerhelp",
+    title: "Building StrangerHelp: From Idea to India's First Hyperlocal Task Network",
+    excerpt: "The story behind StrangerHelp — why we built it, the problems we're solving, and where we're headed next.",
+    date: "2026-06-08",
+    category: "Company",
+  },
+  {
+    slug: "voice-task-posting",
+    title: "Voice Task Posting: Just Speak and Your Task is Live",
+    excerpt: "Can't type? Just tap record, describe your task in any language, and we'll post it for you. Here's how voice posting works.",
+    date: "2026-06-25",
+    category: "Features",
+  },
+  {
+    slug: "live-pulse-map",
+    title: "Live Pulse Map: See Helpers Around You in Real-Time",
+    excerpt: "Our interactive map shows available helpers and open tasks near you. Learn how to use Pulse to find help instantly.",
+    date: "2026-06-24",
+    category: "Features",
+  },
+  {
+    slug: "group-tasks-events",
+    title: "Group Tasks: Hire Multiple Helpers for Events and Big Jobs",
+    excerpt: "Need 5 people for catering? 10 for an event? Post a group task and helpers join until all slots are filled.",
+    date: "2026-06-23",
+    category: "Features",
+  },
+  {
+    slug: "location-based-feed",
+    title: "How Our Location-Based Feed Shows You the Most Relevant Tasks",
+    excerpt: "Tasks sorted by distance, not just time. Whether you allow GPS or enter your city, you see what's closest first.",
+    date: "2026-06-22",
+    category: "Features",
+  },
+  {
+    slug: "urgent-tasks-explained",
+    title: "Urgent Tasks: Get Things Done in Hours, Not Days",
+    excerpt: "Mark your task as urgent to attract helpers fast. Learn how urgent tasks work and why higher budgets get faster results.",
+    date: "2026-06-21",
+    category: "Features",
+  },
+  {
+    slug: "chat-and-coordination",
+    title: "In-App Chat: Coordinate with Helpers Without Sharing Your Number",
+    excerpt: "Private messaging between poster and helper. Share details, send photos, and track progress — all within StrangerHelp.",
+    date: "2026-06-19",
+    category: "Features",
+  },
+  {
+    slug: "photo-proof-system",
+    title: "Completion Proof: How Photo Verification Ensures Task Quality",
+    excerpt: "Every completed task comes with photo proof. Helpers upload images showing the work is done before you pay.",
+    date: "2026-06-17",
+    category: "Features",
+  },
+  {
+    slug: "anonymous-posting",
+    title: "Anonymous Task Posting: Get Help Without Revealing Your Identity",
+    excerpt: "Post tasks anonymously when privacy matters. Your verified badge still shows, but your name stays hidden until you choose.",
+    date: "2026-06-16",
+    category: "Features",
+  },
+  {
+    slug: "share-tasks-grow",
+    title: "Share Tasks on WhatsApp and Social Media to Find Helpers Faster",
+    excerpt: "Every task has a share button. Send it to WhatsApp, Telegram, or Instagram — the more eyes, the faster someone claims it.",
+    date: "2026-06-14",
+    category: "Tips",
+  },
+  {
+    slug: "community-questions",
+    title: "Ask the Community: Get Real-Time Local Information from Strangers",
+    excerpt: "Need to know if a shop is open? How long the queue is? Ask a location-tagged question and get answers from people who are there.",
+    date: "2026-06-13",
+    category: "Features",
+  },
+];
+---
+
+<Layout title="Blog — StrangerHelp">
+  <Navbar />
+  <main class="mx-auto max-w-[1400px] px-4 py-8 md:px-6">
+    <div class="max-w-3xl mx-auto">
+      <h1 class="text-2xl font-semibold text-ink tracking-[-0.96px]">Blog</h1>
+      <p class="mt-2 text-sm text-body">Guides, tips, and stories from the StrangerHelp community.</p>
+
+      <div class="mt-8 space-y-6">
+        {blogs.map((post) => (
+          <a href={`/blog/${post.slug}`} class="block p-5 bg-canvas rounded-lg border border-hairline hover:border-hairline-strong shadow-[0px_1px_1px_#00000005,0px_2px_2px_#0000000a] transition-colors group">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2 py-0.5 text-xs font-medium text-body bg-canvas-soft-2 rounded-full">{post.category}</span>
+              <span class="text-xs text-mute">{post.date}</span>
+            </div>
+            <h2 class="text-base font-semibold text-ink group-hover:text-link transition-colors">{post.title}</h2>
+            <p class="mt-1.5 text-sm text-body leading-relaxed">{post.excerpt}</p>
+          </a>
+        ))}
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Layout>

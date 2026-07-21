@@ -1,0 +1,87 @@
+---
+import AccountLayout from "../../layouts/AccountLayout.astro";
+---
+
+<AccountLayout title="Settings — StrangerHelp">
+  <div class="max-w-lg">
+    <h1 class="text-2xl font-semibold text-ink tracking-[-0.96px]">Settings</h1>
+    <p class="mt-1 text-sm text-body">Manage your account preferences.</p>
+
+    <!-- Change Password -->
+    <section class="mt-8">
+      <h2 class="text-sm font-semibold text-ink mb-4">Change Password</h2>
+      <form class="space-y-4 p-5 bg-canvas rounded-lg border border-hairline">
+        <div>
+          <label for="current" class="block text-sm font-medium text-ink mb-1.5">Current Password</label>
+          <input type="password" id="current" name="current" class="w-full h-10 px-3 text-sm bg-canvas border border-hairline rounded-md focus:outline-none focus:border-ink transition-colors" />
+        </div>
+        <div>
+          <label for="new-pass" class="block text-sm font-medium text-ink mb-1.5">New Password</label>
+          <input type="password" id="new-pass" name="new-pass" class="w-full h-10 px-3 text-sm bg-canvas border border-hairline rounded-md focus:outline-none focus:border-ink transition-colors" />
+        </div>
+        <button type="submit" class="h-9 px-4 text-sm font-medium text-on-primary bg-primary rounded-md hover:opacity-90 transition-opacity">Update Password</button>
+      </form>
+    </section>
+
+    <!-- Notifications -->
+    <section class="mt-8">
+      <h2 class="text-sm font-semibold text-ink mb-4">Notifications</h2>
+      <div class="space-y-3 p-5 bg-canvas rounded-lg border border-hairline">
+        {[
+          { id: "email-notifs", label: "Email notifications", desc: "Task updates and messages", checked: true },
+          { id: "whatsapp", label: "WhatsApp alerts", desc: "Instant task claim notifications", checked: false },
+          { id: "marketing", label: "Marketing emails", desc: "Tips, features, and offers", checked: false },
+        ].map((item) => (
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-ink">{item.label}</p>
+              <p class="text-xs text-mute">{item.desc}</p>
+            </div>
+            <button type="button" class={`relative w-10 h-6 rounded-full transition-colors ${item.checked ? "bg-primary" : "bg-hairline"}`} aria-pressed={String(item.checked)}>
+              <span class={`absolute top-1 left-1 w-4 h-4 bg-canvas rounded-full shadow transition-transform ${item.checked ? "translate-x-4" : ""}`}></span>
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- Danger Zone -->
+    <section class="mt-8">
+      <h2 class="text-sm font-semibold text-error mb-4">Danger Zone</h2>
+      <div class="p-5 bg-canvas rounded-lg border border-error/20">
+        <p class="text-sm text-ink font-medium">Delete Account</p>
+        <p class="text-xs text-body mt-1">Request account deletion. Admin will review and permanently remove your account and all data.</p>
+        <div id="delete-status"></div>
+        <button type="button" id="delete-account-btn" class="mt-4 h-9 px-4 text-sm font-medium text-error border border-error/30 rounded-md hover:bg-error-soft transition-colors">
+          Request Account Deletion
+        </button>
+      </div>
+    </section>
+  </div>
+</AccountLayout>
+
+<script>
+  document.getElementById('delete-account-btn')?.addEventListener('click', async () => {
+    const confirmed = confirm('Are you sure you want to delete your account?\n\nThis will submit a deletion request to our admin team. Once approved, your account and all data will be permanently removed.');
+    if (!confirmed) return;
+
+    const btn = document.getElementById('delete-account-btn')!;
+    btn.textContent = 'Submitting...';
+
+    const res = await fetch('/api/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'account_deletion', reason: 'User requested account deletion', description: 'User wants to delete their account permanently.' }),
+    });
+
+    if (res.ok) {
+      document.getElementById('delete-status')!.innerHTML = '<p class="mt-3 p-3 text-xs text-cyan-deep bg-cyan-soft rounded-md">Deletion request submitted. Admin will review and process it within 24-48 hours.</p>';
+      btn.textContent = 'Request Submitted';
+      btn.setAttribute('disabled', 'true');
+      btn.classList.add('opacity-50');
+    } else {
+      btn.textContent = 'Request Account Deletion';
+      alert('Failed to submit request. Try again.');
+    }
+  });
+</script>

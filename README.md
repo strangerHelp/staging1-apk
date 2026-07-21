@@ -1,11 +1,22 @@
-<div align="center">
+# StrangerHelp Android
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+A hyperlocal task marketplace where strangers help strangers with physical errands — document submissions, parcel pickups, queue standing, photo verifications, and more.
 
-  <h1>Built with AI Studio</h2>
+## Tech Stack
+*   **Framework:** Android, Kotlin
+*   **UI:** Jetpack Compose (Material 3)
+*   **Database:** Room (SQLite)
+*   **Architecture:** MVVM, Repository Pattern
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## Features Ported
+*   App shell with Navigation (Home, Post Task, Profile)
+*   Room Database entities (User, Task, Conversation, Message)
+*   Home Screen (View all open tasks)
+*   Post a Task Screen
+*   Mock local persistence for tasks
+*   Profile overview
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>
+## Limitations / TODO
+*   Chat messaging integration
+*   External API / Edge deployment integration
+*   Push notifications

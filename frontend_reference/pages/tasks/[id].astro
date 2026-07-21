@@ -1,0 +1,568 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Navbar from "../../components/Navbar.astro";
+import Footer from "../../components/Footer.astro";
+---
+
+<Layout title="Task Detail — StrangerHelp">
+  <Navbar />
+  <main class="mx-auto max-w-[1400px] px-4 py-8 md:px-6">
+    <div class="max-w-3xl mx-auto">
+      <nav class="flex items-center gap-2 text-sm text-mute mb-6">
+        <a href="/tasks" class="hover:text-ink transition-colors">Tasks</a>
+        <span>/</span>
+        <span class="text-body" id="breadcrumb-cat">Loading...</span>
+      </nav>
+
+      <div id="task-content">
+        <p class="text-sm text-mute py-12 text-center">Loading task...</p>
+      </div>
+
+      <div id="not-found" class="hidden text-center py-16">
+        <p class="text-lg font-semibold text-ink">Task not found</p>
+        <a href="/tasks" class="mt-4 inline-flex h-9 items-center px-4 text-sm font-medium text-link">← Back to tasks</a>
+      </div>
+    </div>
+  </main>
+  <Footer />
+
+<!-- Edit Task Modal -->
+<div id="edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4">
+  <div class="bg-canvas rounded-lg border border-hairline shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-base font-semibold text-ink">Edit Task</h3>
+      <button id="edit-modal-close" class="text-mute hover:text-ink">✕</button>
+    </div>
+    <div class="space-y-4">
+      <div id="edit-error" class="hidden p-3 text-sm text-error bg-error-soft rounded-md"></div>
+      <div>
+        <label class="block text-sm font-medium text-ink mb-1.5">Title</label>
+        <input type="text" id="edit-title" class="w-full h-10 px-3 text-sm bg-canvas border border-hairline rounded-md focus:outline-none focus:border-ink" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink mb-1.5">Description</label>
+        <textarea id="edit-description" rows="3" class="w-full px-3 py-2.5 text-sm bg-canvas border border-hairline rounded-md focus:outline-none focus:border-ink resize-none"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-ink mb-1.5">Budget (₹)</label>
+          <input type="number" id="edit-budget" min="1" class="w-full h-10 px-3 text-sm bg-canvas border border-hairline rounded-md focus:outline-none focus:border-ink" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-ink mb-1.5">Category</label>
+          <select id="edit-category" class="w-full h-10 px-3 text-sm bg-canvas border border-hairline rounded-md focus:outline-none focus:border-ink">
+            <option>Simple Survey</option><option>Task</option><option>Document Submission</option>
+            <option>Photo Proof</option><option>Parcel Pickup</option><option>Queue Standing</option>
+            <option>Verification</option><option>Receipt Collection</option><option>Event / Group Work</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink mb-1.5">Location</label>
+        <input type="text" id="edit-location" class="w-full h-10 px-3 text-sm bg-canvas border border-hairline rounded-md focus:outline-none focus:border-ink" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink mb-1.5">Deadline</label>
+        <select id="edit-deadline" class="w-full h-10 px-3 text-sm bg-canvas border border-hairline rounded-md focus:outline-none focus:border-ink">
+          <option>Within 1 hour</option><option>Within 2 hours</option><option>Within 4 hours</option>
+          <option>Today</option><option>Tomorrow</option>
+        </select>
+      </div>
+      <div class="flex items-center justify-between p-3 bg-canvas-soft rounded-md border border-hairline">
+        <div><p class="text-sm font-medium text-ink">⚡ Urgent</p><p class="text-xs text-mute">Mark as urgent task</p></div>
+        <input type="checkbox" id="edit-urgent" class="w-5 h-5 rounded border-hairline" />
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button id="edit-save-btn" class="flex-1 h-10 text-sm font-medium text-on-primary bg-primary rounded-md hover:opacity-90">Save Changes</button>
+        <button id="edit-cancel-btn" class="flex-1 h-10 text-sm font-medium text-ink border border-hairline rounded-md hover:bg-canvas-soft-2">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+</Layout>
+
+<script>
+  const taskId = window.location.pathname.split('/tasks/')[1];
+  let currentUser: any = null;
+  let task: any = null;
+
+  async function init() {
+    const authRes = await fetch('/api/auth/me');
+    if (authRes.ok) {
+      const d = await authRes.json();
+      currentUser = d.user;
+    }
+
+    const res = await fetch(`/api/tasks/${taskId}`);
+    if (!res.ok) {
+      document.getElementById('task-content')!.classList.add('hidden');
+      document.getElementById('not-found')!.classList.remove('hidden');
+      return;
+    }
+
+    task = await res.json();
+    render();
+  }
+
+  function render() {
+    document.getElementById('breadcrumb-cat')!.textContent = task.category;
+    const isOwner = currentUser && task.posterId === currentUser.id;
+    const isAdmin = currentUser && currentUser.is_admin;
+    const isClaimer = currentUser && task.claimedBy === currentUser.id;
+    const time = (window as any).formatIST(task.createdAt);
+
+    let actionsHtml = '';
+    let messageBtn = '';
+
+    if (currentUser && !isOwner) {
+      messageBtn = `<button id="message-btn" class="h-11 px-6 flex items-center justify-center text-sm font-medium text-ink border border-hairline rounded-full hover:bg-canvas-soft-2 transition-colors">Message Poster</button>`;
+    }
+    if (currentUser && isOwner && task.claimedBy) {
+      messageBtn = `<button id="message-btn" class="h-11 px-6 flex items-center justify-center text-sm font-medium text-ink border border-hairline rounded-full hover:bg-canvas-soft-2 transition-colors">Message Helper</button>`;
+    }
+
+    if (task.status === 'open' && currentUser && !isOwner) {
+      if (task.maxClaimers > 1) {
+        const alreadyClaimed = task.claimedUsers?.some((u: any) => u.user_id === currentUser.id);
+        const slotsLeft = task.maxClaimers - (task.claimedUsers?.length || 0);
+        actionsHtml = alreadyClaimed
+          ? `<p class="text-sm text-cyan-deep font-medium">✓ You joined this task</p>${messageBtn}`
+          : `<button id="claim-btn" class="flex-1 h-11 flex items-center justify-center text-sm font-medium text-on-primary bg-primary rounded-full hover:opacity-90 transition-opacity">Join Task (${slotsLeft} spot${slotsLeft > 1 ? 's' : ''} left)</button>${messageBtn}`;
+      } else {
+        actionsHtml = `<button id="claim-btn" class="flex-1 h-11 flex items-center justify-center text-sm font-medium text-on-primary bg-primary rounded-full hover:opacity-90 transition-opacity">Claim This Task</button>${messageBtn}`;
+      }
+    } else if (task.status === 'open' && !currentUser) {
+      actionsHtml = `<a href="/login?redirect=/tasks/${taskId}" class="flex-1 h-11 flex items-center justify-center text-sm font-medium text-on-primary bg-primary rounded-full">Login to Claim</a>`;
+    } else if (task.status === 'claimed' && isClaimer) {
+      actionsHtml = `
+        <div class="w-full">
+          <p class="text-sm font-medium text-ink mb-2">Upload completion proof:</p>
+          <input type="file" id="proof-files" accept="image/*,.pdf" multiple class="text-sm text-body" />
+          <button id="complete-btn" class="mt-3 w-full h-11 flex items-center justify-center text-sm font-medium text-on-primary bg-primary rounded-full hover:opacity-90 transition-opacity">Submit Proof & Complete</button>
+          <div class="mt-3">${messageBtn}</div>
+        </div>`;
+    } else if (task.status === 'claimed' && isOwner) {
+      actionsHtml = `<p class="text-sm text-cyan-deep font-medium">✓ Claimed by ${escapeHtml(task.claimedByName || 'a helper')}${task.claimerVerified ? ' <span class="text-link text-xs">✓ Verified</span>' : ''}</p>${messageBtn}`;
+    } else if (task.status === 'completed') {
+      actionsHtml = `<p class="text-sm text-mute font-medium">✓ Task completed</p>${messageBtn}`;
+    }
+
+    // Delete + Report buttons
+    let topActions = '';
+    if (isOwner || isAdmin) {
+      topActions += `<button id="delete-btn" class="h-8 px-3 text-xs font-medium text-error border border-error/30 rounded-md hover:bg-error-soft transition-colors">Delete Task</button>`;
+    }
+    if (isOwner && task.status === 'open') {
+      topActions += `<button id="edit-btn" class="h-8 px-3 text-xs font-medium text-link border border-hairline rounded-md hover:bg-canvas-soft-2 transition-colors">Edit</button>`;
+    }
+    if (currentUser && !isOwner) {
+      topActions += `<button id="report-btn" class="h-8 px-3 text-xs font-medium text-warning-deep border border-warning/30 rounded-md hover:bg-warning-soft transition-colors">Report</button>`;
+    }
+
+    let attachmentsHtml = '';
+    if (task.attachments?.length > 0) {
+      attachmentsHtml = `<div class="mt-4"><p class="text-xs text-mute font-mono uppercase mb-2">Attachments</p><div class="flex gap-2 flex-wrap">${task.attachments.map((a: string, i: number) => {
+        const isImage = a.startsWith('data:image') || a.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+        const isAudio = a.startsWith('data:audio') || a.match(/\.(webm|mp3|ogg|wav)$/i);
+        if (isAudio) return `<audio controls class="h-10 max-w-full" src="${a}"></audio>`;
+        if (isImage) return `<img src="${a}" onclick="viewImage(this.src)" class="w-24 h-24 object-cover rounded-md border border-hairline cursor-pointer" />`;
+        return `<a href="${a}" target="_blank" class="inline-flex h-9 items-center px-3 text-xs font-medium text-link border border-hairline rounded-md hover:bg-canvas-soft-2">View File ${i + 1}</a>`;
+      }).join('')}</div></div>`;
+    }
+
+    let proofHtml = '';
+    if (task.completionProof?.length > 0) {
+      proofHtml = `<div class="mt-6 p-4 bg-cyan-soft/30 rounded-lg border border-cyan/20">
+        <p class="text-sm font-medium text-ink mb-2">Completion Proof</p>
+        <div class="flex gap-2 flex-wrap">${task.completionProof.map((p: string, i: number) => {
+          const isImage = p.startsWith('data:image') || p.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+          return isImage
+            ? `<img src="${p}" onclick="viewImage(this.src)" class="w-24 h-24 object-cover rounded-md border border-hairline cursor-pointer" />`
+            : `<a href="${p}" target="_blank" class="inline-flex h-9 items-center px-3 text-xs font-medium text-link border border-hairline rounded-md hover:bg-canvas-soft-2">View Proof ${i + 1}</a>`;
+        }).join('')}</div>
+      </div>`;
+    }
+
+    document.getElementById('task-content')!.innerHTML = `
+      <div class="p-6 md:p-8 bg-canvas rounded-lg border border-hairline shadow-[0px_2px_2px_#0000000a,0px_8px_16px_-4px_#0000000a]">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 text-xs font-medium bg-canvas-soft-2 text-body rounded-full">${escapeHtml(task.category)}</span>
+            <span class="px-2.5 py-0.5 text-xs font-medium rounded-full ${task.status === 'open' ? 'bg-cyan-soft text-cyan-deep' : task.status === 'claimed' ? 'bg-warning-soft text-warning-deep' : 'bg-canvas-soft-2 text-mute'}">${task.status.charAt(0).toUpperCase() + task.status.slice(1)}</span>
+            ${task.urgent ? '<span class="px-2.5 py-0.5 text-xs font-medium bg-error-soft text-error rounded-full">⚡ Urgent</span>' : ''}
+          </div>
+          <div class="flex items-center gap-2">${topActions}</div>
+        </div>
+        <h1 class="text-xl md:text-2xl font-semibold text-ink tracking-[-0.96px]">${escapeHtml(task.title)}</h1>
+        ${task.description ? `<p class="mt-4 text-sm text-body leading-relaxed">${escapeHtml(task.description)}</p>` : ''}
+        ${attachmentsHtml}
+        <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="p-3 bg-canvas-soft rounded-md"><p class="text-xs text-mute font-mono uppercase">Budget</p><p class="mt-1 text-lg font-semibold text-ink">₹${task.budget}${task.maxClaimers > 1 ? '<span class="text-xs font-normal text-mute">/person</span>' : ''}</p></div>
+          <div class="p-3 bg-canvas-soft rounded-md"><p class="text-xs text-mute font-mono uppercase">Deadline</p><p class="mt-1 text-sm font-medium text-ink">${escapeHtml(task.deadline || 'Today')}</p></div>
+          <div class="p-3 bg-canvas-soft rounded-md"><p class="text-xs text-mute font-mono uppercase">Location</p><p class="mt-1 text-sm font-medium text-ink">${escapeHtml(task.location)}</p></div>
+          <div class="p-3 bg-canvas-soft rounded-md"><p class="text-xs text-mute font-mono uppercase">Posted</p><p class="mt-1 text-sm font-medium text-ink">${time}</p></div>
+        </div>
+        ${task.maxClaimers > 1 ? `
+        <div class="mt-4 p-4 bg-canvas-soft rounded-md border border-hairline">
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-xs font-mono uppercase text-mute">Group Task — ${task.claimedUsers?.length || 0}/${task.maxClaimers} helpers joined</p>
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full ${(task.claimedUsers?.length || 0) >= task.maxClaimers ? 'bg-error-soft text-error' : 'bg-cyan-soft text-cyan-deep'}">${(task.claimedUsers?.length || 0) >= task.maxClaimers ? 'Full' : 'Open'}</span>
+          </div>
+          <div class="w-full h-2 bg-hairline rounded-full overflow-hidden"><div class="h-full bg-cyan-deep rounded-full" style="width:${Math.round(((task.claimedUsers?.length || 0) / task.maxClaimers) * 100)}%"></div></div>
+          ${task.claimedUsers?.length > 0 ? `<div class="mt-3 space-y-1">${task.claimedUsers.map((u: any) => `<div class="flex items-center gap-2 text-xs text-body"><span class="w-5 h-5 rounded-full bg-canvas-soft-2 flex items-center justify-center text-[10px] font-semibold">${(u.user_name || '?')[0].toUpperCase()}</span>${escapeHtml(u.user_name)}</div>`).join('')}</div>` : ''}
+        </div>` : ''}
+        ${task.lat && task.lng ? `
+        <div class="mt-6">
+          <div id="task-map" class="h-48 rounded-md border border-hairline overflow-hidden"></div>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=${task.lat},${task.lng}" target="_blank" rel="noopener" class="mt-2 flex items-center justify-center gap-2 h-10 w-full text-sm font-medium text-ink border border-hairline rounded-md hover:bg-canvas-soft-2 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+            Get Directions (Google Maps)
+          </a>
+        </div>` : ''}
+        <div class="mt-6 pt-6 border-t border-hairline flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-canvas-soft-2 flex items-center justify-center text-sm font-semibold text-body">${task.anonymous ? '?' : (task.posterName || 'U').slice(0, 2).toUpperCase()}</div>
+            <div>
+              <p class="text-sm font-medium text-ink">${task.anonymous ? 'Anonymous' : escapeHtml(task.posterName || 'User')}${task.posterVerified ? ' <span class="text-link text-xs" title="Verified User">✓ Verified</span>' : ''}</p>
+              <p class="text-xs text-mute">${escapeHtml(task.city || '')}</p>
+            </div>
+          </div>
+        </div>
+        <div class="mt-6 pt-6 border-t border-hairline flex flex-col sm:flex-row gap-3">
+          ${actionsHtml}
+        </div>
+        ${proofHtml}
+      </div>
+      <!-- Share button -->
+      <div class="mt-4 flex gap-2">
+        <button id="share-btn" class="flex-1 h-10 flex items-center justify-center gap-2 text-sm font-medium text-ink border border-hairline rounded-lg hover:bg-canvas-soft-2 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+          Share Task
+        </button>
+        <a id="whatsapp-share" target="_blank" rel="noopener" class="h-10 px-4 flex items-center justify-center gap-2 text-sm font-medium text-on-primary bg-[#25D366] rounded-lg hover:opacity-90 transition-opacity">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+          WhatsApp
+        </a>
+      </div>
+      <div class="mt-4 p-4 bg-warning-soft rounded-lg border border-warning/20 flex items-start gap-3">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-warning-deep shrink-0 mt-0.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>
+          <p class="text-sm font-medium text-ink">Direct Payment — Escrow Coming Soon</p>
+          <p class="text-xs text-body mt-0.5">Payment of ₹${task.budget} is made directly by the poster to the claimer. Verify payment terms via messages before starting. <a href="/refund" class="text-link">Learn more</a></p>
+        </div>
+      </div>`;
+
+    // Add review section for completed tasks
+    if (task.status === 'completed' && currentUser && (isOwner || isClaimer)) {
+      const revieweeId = isOwner ? task.claimedBy : task.posterId;
+      const revieweeName = isOwner ? task.claimedByName : task.posterName;
+      document.getElementById('task-content')!.innerHTML += `
+      <div id="review-section" class="mt-4 p-5 bg-canvas rounded-lg border border-hairline">
+        <h3 class="text-sm font-semibold text-ink mb-3">Rate ${escapeHtml(revieweeName || 'the other party')}</h3>
+        <div id="existing-review"></div>
+        <div id="review-form-container">
+          <div class="flex gap-1 mb-3" id="star-rating">
+            ${[1,2,3,4,5].map(i => `<button type="button" data-star="${i}" class="star-btn text-2xl text-hairline hover:text-warning transition-colors">★</button>`).join('')}
+          </div>
+          <textarea id="review-comment" rows="2" placeholder="Leave a comment (optional)" class="w-full px-3 py-2 text-sm bg-canvas border border-hairline rounded-md focus:outline-none focus:border-ink placeholder:text-mute resize-none mb-3"></textarea>
+          <button id="submit-review" data-reviewee="${revieweeId}" class="h-9 px-4 text-sm font-medium text-on-primary bg-primary rounded-md hover:opacity-90 transition-opacity">Submit Review</button>
+        </div>
+      </div>`;
+      initReviewUI();
+    }
+
+    // Attach event listeners
+    document.getElementById('claim-btn')?.addEventListener('click', claimTask);
+    document.getElementById('complete-btn')?.addEventListener('click', completeTask);
+    document.getElementById('message-btn')?.addEventListener('click', messageUser);
+    document.getElementById('delete-btn')?.addEventListener('click', deleteTask);
+    document.getElementById('report-btn')?.addEventListener('click', reportTask);
+    document.getElementById('edit-btn')?.addEventListener('click', openEditModal);
+
+    // Init mini-map if task has coordinates
+    if (task.lat && task.lng && document.getElementById('task-map')) {
+      initTaskMap(task.lat, task.lng);
+    }
+    setupShare();
+  }
+
+  async function initTaskMap(lat: number, lng: number) {
+    if (!(window as any).maplibregl) {
+      // Load CSS first
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
+      document.head.appendChild(link);
+      // Load JS
+      await new Promise<void>((resolve) => {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
+        s.onload = () => resolve();
+        document.head.appendChild(s);
+      });
+    }
+    const maplibregl = (window as any).maplibregl;
+    const map = new maplibregl.Map({
+      container: 'task-map',
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      center: [lng, lat],
+      zoom: 14,
+      interactive: true,
+    });
+    new maplibregl.Marker({ color: '#171717' }).setLngLat([lng, lat]).addTo(map);
+  }
+
+  function setupShare() {
+    const shareText = `🆘 Task: ${task.title}\n💰 Earn ₹${task.budget}\n📍 ${task.location}\n⏰ ${task.deadline || 'Today'}\n\nComplete this task nearby and earn money on StrangerHelp!`;
+    const shareUrl = `https://strangerhelp.com/tasks/${taskId}`;
+
+    // WhatsApp share
+    const waBtn = document.getElementById('whatsapp-share') as HTMLAnchorElement;
+    if (waBtn) waBtn.href = `https://wa.me/?text=${encodeURIComponent(shareText + '\n\n' + shareUrl)}`;
+
+    // Native share / copy
+    document.getElementById('share-btn')?.addEventListener('click', async () => {
+      if (navigator.share) {
+        await navigator.share({ title: `₹${task.budget} — ${task.title}`, text: shareText, url: shareUrl });
+      } else {
+        await navigator.clipboard.writeText(shareText + '\n\n' + shareUrl);
+        const btn = document.getElementById('share-btn')!;
+        btn.innerHTML = '✓ Copied!';
+        setTimeout(() => { btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg> Share Task'; }, 2000);
+      }
+    });
+  }
+
+  let selectedRating = 0;
+
+  function initReviewUI() {
+    // Check if already reviewed
+    fetch(`/api/reviews?taskId=${taskId}`).then(r => r.json()).then(data => {
+      const myReview = data.reviews?.find((r: any) => r.reviewer_id === currentUser.id);
+      if (myReview) {
+        document.getElementById('review-form-container')!.innerHTML = `<p class="text-sm text-body">You rated ${'★'.repeat(myReview.rating)}${'☆'.repeat(5 - myReview.rating)} ${myReview.comment ? `— "${myReview.comment}"` : ''}</p>`;
+      }
+    });
+
+    // Star rating interaction
+    document.querySelectorAll('.star-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedRating = parseInt((btn as HTMLElement).dataset.star || '0');
+        document.querySelectorAll('.star-btn').forEach((b, i) => {
+          (b as HTMLElement).classList.toggle('text-warning', i < selectedRating);
+          (b as HTMLElement).classList.toggle('text-hairline', i >= selectedRating);
+        });
+      });
+    });
+
+    // Submit review
+    document.getElementById('submit-review')?.addEventListener('click', async () => {
+      if (selectedRating === 0) { alert('Please select a rating'); return; }
+      const revieweeId = (document.getElementById('submit-review') as HTMLElement).dataset.reviewee;
+      const comment = (document.getElementById('review-comment') as HTMLTextAreaElement).value;
+
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId, revieweeId, rating: selectedRating, comment }),
+      });
+
+      if (res.ok) {
+        document.getElementById('review-form-container')!.innerHTML = `<p class="text-sm text-cyan-deep font-medium">✓ Review submitted! Thank you.</p>`;
+      } else {
+        const d = await res.json();
+        alert(d.error || 'Failed to submit review');
+      }
+    });
+  }
+
+  async function claimTask() {
+    // Show payment warning
+    const confirmed = confirm(
+      '⚠️ IMPORTANT: Payment Notice\n\n' +
+      '• The task poster will pay you directly (UPI, cash, etc.)\n' +
+      '• StrangerHelp does NOT hold or process payments\n' +
+      '• Verify payment terms with the poster via messages BEFORE starting work\n' +
+      '• Karma Wallet (escrow) is coming soon\n\n' +
+      'Do you want to proceed and claim this task?'
+    );
+    if (!confirmed) return;
+
+    const btn = document.getElementById('claim-btn')!;
+    btn.textContent = 'Claiming...';
+    const res = await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'claim' }),
+    });
+    if (res.ok) {
+      // Reload task
+      const r = await fetch(`/api/tasks/${taskId}`);
+      task = await r.json();
+      render();
+    } else {
+      const d = await res.json();
+      alert(d.error || 'Failed to claim');
+      btn.textContent = 'Claim This Task';
+    }
+  }
+
+  async function completeTask() {
+    const files = (document.getElementById('proof-files') as HTMLInputElement).files;
+    if (!files || files.length === 0) {
+      alert('Please upload at least one proof photo');
+      return;
+    }
+    const btn = document.getElementById('complete-btn')!;
+    btn.textContent = 'Submitting...';
+
+    const fd = new FormData();
+    fd.append('action', 'complete');
+    for (let i = 0; i < files.length; i++) fd.append('proof', await (window as any).compressImage(files[i]));
+
+    const res = await fetch(`/api/tasks/${taskId}`, { method: 'PATCH', body: fd });
+    if (res.ok) {
+      const r = await fetch(`/api/tasks/${taskId}`);
+      task = await r.json();
+      render();
+    } else {
+      alert('Failed to complete task');
+      btn.textContent = 'Submit Proof & Complete';
+    }
+  }
+
+  async function messageUser() {
+    const btn = document.getElementById('message-btn')!;
+    btn.textContent = 'Opening chat...';
+    
+    // Determine who to message
+    const isOwner = task.posterId === currentUser.id;
+    const recipientId = isOwner ? task.claimedBy : task.posterId;
+    
+    if (!recipientId) {
+      alert('Cannot message: no recipient found');
+      btn.textContent = 'Message Poster';
+      return;
+    }
+
+    // Create or get existing conversation
+    const res = await fetch('/api/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientId, taskId }),
+    });
+
+    if (res.ok) {
+      const conv = await res.json();
+      window.location.href = `/chat/${conv._id}`;
+    } else {
+      alert('Failed to start conversation');
+      btn.textContent = isOwner ? 'Message Helper' : 'Message Poster';
+    }
+  }
+
+  async function deleteTask() {
+    if (!confirm('Are you sure you want to delete this task? This cannot be undone.')) return;
+    const res = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
+    if (res.ok) {
+      alert('Task deleted.');
+      window.location.href = '/tasks';
+    } else {
+      const d = await res.json();
+      alert(d.error || 'Failed to delete');
+    }
+  }
+
+  async function reportTask() {
+    const reasons = ['Spam or scam', 'Inappropriate content', 'Illegal activity', 'Misleading information', 'Harassment', 'Other'];
+    const reason = prompt(
+      'Why are you reporting this task?\n\n' +
+      reasons.map((r, i) => `${i + 1}. ${r}`).join('\n') +
+      '\n\nEnter the number or type your reason:'
+    );
+    if (!reason) return;
+
+    const selectedReason = /^\d$/.test(reason.trim()) ? reasons[parseInt(reason) - 1] || reason : reason;
+    const description = prompt('Any additional details? (optional)') || '';
+
+    const res = await fetch('/api/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'task', targetId: taskId, reason: selectedReason, description }),
+    });
+
+    if (res.ok) {
+      alert('Report submitted. Our team will review it. Thank you.');
+    } else {
+      const d = await res.json();
+      alert(d.error || 'Failed to submit report');
+    }
+  }
+
+  function openEditModal() {
+    // Pre-fill form with current task data
+    (document.getElementById('edit-title') as HTMLInputElement).value = task.title || '';
+    (document.getElementById('edit-description') as HTMLTextAreaElement).value = task.description || '';
+    (document.getElementById('edit-budget') as HTMLInputElement).value = task.budget || '';
+    (document.getElementById('edit-location') as HTMLInputElement).value = task.location || '';
+    (document.getElementById('edit-urgent') as HTMLInputElement).checked = task.urgent === 1;
+
+    const catSelect = document.getElementById('edit-category') as HTMLSelectElement;
+    for (let i = 0; i < catSelect.options.length; i++) {
+      if (catSelect.options[i].value === task.category) { catSelect.selectedIndex = i; break; }
+    }
+    const dlSelect = document.getElementById('edit-deadline') as HTMLSelectElement;
+    for (let i = 0; i < dlSelect.options.length; i++) {
+      if (dlSelect.options[i].value === task.deadline) { dlSelect.selectedIndex = i; break; }
+    }
+
+    document.getElementById('edit-modal')!.classList.remove('hidden');
+    document.getElementById('edit-error')!.classList.add('hidden');
+
+    document.getElementById('edit-save-btn')!.onclick = saveEdit;
+    document.getElementById('edit-cancel-btn')!.onclick = () => document.getElementById('edit-modal')!.classList.add('hidden');
+    document.getElementById('edit-modal-close')!.onclick = () => document.getElementById('edit-modal')!.classList.add('hidden');
+  }
+
+  async function saveEdit() {
+    const saveBtn = document.getElementById('edit-save-btn')!;
+    saveBtn.textContent = 'Saving...';
+
+    const body = {
+      title: (document.getElementById('edit-title') as HTMLInputElement).value.trim(),
+      description: (document.getElementById('edit-description') as HTMLTextAreaElement).value,
+      budget: (document.getElementById('edit-budget') as HTMLInputElement).value,
+      category: (document.getElementById('edit-category') as HTMLSelectElement).value,
+      location: (document.getElementById('edit-location') as HTMLInputElement).value.trim(),
+      deadline: (document.getElementById('edit-deadline') as HTMLSelectElement).value,
+      urgent: (document.getElementById('edit-urgent') as HTMLInputElement).checked,
+    };
+
+    if (!body.title) { document.getElementById('edit-error')!.textContent = 'Title is required'; document.getElementById('edit-error')!.classList.remove('hidden'); saveBtn.textContent = 'Save Changes'; return; }
+
+    const res = await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'edit', ...body }),
+    });
+
+    if (res.ok) {
+      document.getElementById('edit-modal')!.classList.add('hidden');
+      // Reload task
+      const r = await fetch(`/api/tasks/${taskId}`);
+      task = await r.json();
+      render();
+    } else {
+      const d = await res.json();
+      document.getElementById('edit-error')!.textContent = d.error || 'Failed to save';
+      document.getElementById('edit-error')!.classList.remove('hidden');
+      saveBtn.textContent = 'Save Changes';
+    }
+  }
+
+  function escapeHtml(s: string) {
+    return s?.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') || '';
+  }
+
+  init();
+</script>
