@@ -8,9 +8,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.strangerhelp.app.data.api.ApiClient
 import com.strangerhelp.app.data.model.User
 import com.strangerhelp.app.ui.theme.*
@@ -25,6 +29,7 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit) {
     var isRegister by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
+
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -33,19 +38,43 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(32.dp))
+        
+        AsyncImage(
+            model = "https://images.unsplash.com/photo-1529156069898-49953eb1b5ae?q=80&w=800&auto=format&fit=crop",
+            contentDescription = "Community helping each other",
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .clip(RoundedCornerShape(16.dp)),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(Modifier.height(24.dp))
+
         Text(
             if (isRegister) "Create an account." else "Welcome back.",
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Text(
-            if (isRegister) "Sign up for a StrangerHelp account." else "Log in to your StrangerHelp account.",
-            color = Muted,
-            modifier = Modifier.padding(top = 8.dp)
-        )
-        Spacer(Modifier.height(40.dp))
+        
+        if (!isRegister) {
+            Text(
+                "StrangerHelp connects you with trusted locals to get tasks done or offer your skills.",
+                color = Muted,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
+            )
+        } else {
+            Text(
+                "Sign up for a StrangerHelp account.",
+                color = Muted,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+        
+        Spacer(Modifier.height(32.dp))
 
         error?.let {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
