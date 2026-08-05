@@ -1,0 +1,2 @@
+sed -i '1iimport com.google.accompanist.permissions.ExperimentalPermissionsApi\nimport com.google.accompanist.permissions.isGranted\nimport com.google.accompanist.permissions.rememberPermissionState\nimport android.Manifest' app/src/main/java/com/strangerhelp/app/ui/screens/tasks/TasksScreen.kt
+sed -i 's/@OptIn(ExperimentalMaterial3Api::class)/@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)/' app/src/main/java/com/strangerhelp/app/ui/screens/tasks/TasksScreen.kt

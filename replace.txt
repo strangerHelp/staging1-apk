@@ -1,0 +1,11 @@
+    // Ensure MapLibre is initialized
+    LaunchedEffect(Unit) {
+        try {
+            MapLibre.getInstance(context)
+            val offlineManager = OfflineManager.getInstance(context)
+            offlineManager.setMaximumAmbientCacheSize(150 * 1024 * 1024, object : OfflineManager.FileSourceCallback {
+                override fun onSuccess() {}
+                override fun onError(message: String) {}
+            })
+        } catch (e: Exception) {}
+    }

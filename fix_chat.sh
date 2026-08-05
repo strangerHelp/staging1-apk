@@ -1,0 +1,4 @@
+sed -i 's/import androidx.compose.foundation.background/import androidx.compose.foundation.background\nimport androidx.compose.foundation.clickable/' app/src/main/java/com/strangerhelp/app/ui/screens/chat/ChatListScreen.kt
+sed -i 's/items(conversations) { conv -> ConversationItem(conv) }/items(conversations) { conv -> ConversationItem(conv, onClick = { navController.navigate("chat\/${conv._id}") }) }/' app/src/main/java/com/strangerhelp/app/ui/screens/chat/ChatListScreen.kt
+sed -i 's/fun ConversationItem(conv: Conversation) {/fun ConversationItem(conv: Conversation, onClick: () -> Unit) {/' app/src/main/java/com/strangerhelp/app/ui/screens/chat/ChatListScreen.kt
+sed -i 's/modifier = Modifier.fillMaxWidth(),/modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),/' app/src/main/java/com/strangerhelp/app/ui/screens/chat/ChatListScreen.kt

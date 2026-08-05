@@ -31,14 +31,14 @@ import com.strangerhelp.app.ui.screens.pulse.PulseScreen
 import com.strangerhelp.app.ui.screens.notifications.NotificationsScreen
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector, val iconOutlined: ImageVector) {
-    object Feed : Screen("feed", "Feed", Icons.Filled.Explore, Icons.Outlined.Explore)
-    object Tasks : Screen("tasks", "Tasks", Icons.Filled.Assignment, Icons.Outlined.Assignment)
+    object Feed : Screen("feed", "Home", Icons.Filled.Home, Icons.Outlined.Home)
+    object Tasks : Screen("tasks", "Tasks", Icons.Filled.Explore, Icons.Outlined.Explore)
     object Post : Screen("post", "Post", Icons.Filled.AddCircle, Icons.Outlined.AddCircle)
-    object Chat : Screen("chat", "Chat", Icons.Filled.Chat, Icons.Outlined.Chat)
-    object Profile : Screen("profile", "Me", Icons.Filled.Person, Icons.Outlined.Person)
+    object Chat : Screen("chat", "Messages", Icons.Filled.ChatBubble, Icons.Outlined.ChatBubbleOutline)
+    object Profile : Screen("profile", "Profile", Icons.Filled.Person, Icons.Outlined.Person)
 }
 
-val bottomNavItems = listOf(Screen.Feed, Screen.Tasks, Screen.Post, Screen.Chat, Screen.Profile)
+val bottomNavItems = listOf(Screen.Feed, Screen.Tasks, Screen.Chat, Screen.Profile)
 
 @Composable
 fun AppNavigation(user: User, onLogout: () -> Unit) {
@@ -78,7 +78,7 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
     ) { padding ->
         NavHost(navController, startDestination = Screen.Feed.route, Modifier.padding(padding)) {
             composable(Screen.Feed.route) { FeedScreen(navController, user) }
-            composable(Screen.Tasks.route) { TasksScreen(navController, user) }
+            composable(Screen.Tasks.route) { TasksScreen(navController) }
             composable(Screen.Post.route) { PostTaskScreen(navController) }
             composable(Screen.Chat.route) { ChatListScreen(navController, user) }
             composable(Screen.Profile.route) { ProfileScreen(navController, user, onLogout) }

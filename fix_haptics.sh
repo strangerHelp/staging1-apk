@@ -1,0 +1,7 @@
+sed -i 's/import androidx.compose.ui.unit.sp/import androidx.compose.ui.unit.sp\nimport androidx.compose.ui.platform.LocalHapticFeedback\nimport androidx.compose.ui.hapticfeedback.HapticFeedbackType/' app/src/main/java/com/strangerhelp/app/ui/screens/chat/ChatDetailScreen.kt
+
+sed -i 's/val listState = rememberLazyListState()/val listState = rememberLazyListState()\n    val haptic = LocalHapticFeedback.current\n    var previousMessageCount by remember { mutableStateOf(0) }/' app/src/main/java/com/strangerhelp/app/ui/screens/chat/ChatDetailScreen.kt
+
+sed -i 's/if (res.isSuccessful) messages = res.body() ?: emptyList()/if (res.isSuccessful) {\n                    val newMessages = res.body() ?: emptyList()\n                    if (newMessages.size > previousMessageCount \&\& previousMessageCount > 0) {\n                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)\n                    }\n                    previousMessageCount = newMessages.size\n                    messages = newMessages\n                }/' app/src/main/java/com/strangerhelp/app/ui/screens/chat/ChatDetailScreen.kt
+
+sed -i 's/ApiClient.api.sendMessage(convId, mapOf("text" to text))/val sendRes = ApiClient.api.sendMessage(convId, mapOf("text" to text))\n                                    if (sendRes.isSuccessful) {\n                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)\n                                    }/' app/src/main/java/com/strangerhelp/app/ui/screens/chat/ChatDetailScreen.kt

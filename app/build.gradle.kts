@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -13,6 +14,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
+
         vectorDrawables.useSupportLibrary = true
     }
 
@@ -39,7 +41,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
 
     buildFeatures {
         compose = true
@@ -79,9 +80,26 @@ dependencies {
     // Accompanist (swipe, permissions)
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
+    // Maps
+    implementation("org.maplibre.gl:android-sdk:11.11.0")
+
     // Core
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+    
+    // Room
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    val room_version = "2.6.1"
+    implementation("androidx.room:room-runtime:$room_version")
+    ksp("androidx.room:room-compiler:$room_version")
+    implementation("androidx.room:room-ktx:$room_version")
+}
+
+ksp {
+    arg("room.generateKotlin", "true")
+}
+dependencies {
+    implementation("com.google.android.gms:play-services-location:21.1.0")
 }

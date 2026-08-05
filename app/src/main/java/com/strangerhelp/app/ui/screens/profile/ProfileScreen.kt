@@ -20,7 +20,6 @@ import com.strangerhelp.app.ui.theme.*
 fun ProfileScreen(navController: NavController, user: User, onLogout: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(24.dp))
-
         // Avatar
         Surface(modifier = Modifier.size(80.dp), shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -73,8 +72,26 @@ fun ProfileScreen(navController: NavController, user: User, onLogout: () -> Unit
                 }
             }
         }
-
         Spacer(Modifier.height(24.dp))
+        
+        if (user.skills.length > 2) {
+            val skillsList = try { org.json.JSONArray(user.skills).let { arr -> List(arr.length()) { arr.getString(it) } } } catch (e: Exception) { emptyList() }
+            if (skillsList.isNotEmpty()) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+                    Text("Skills & Interests", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        skillsList.forEach { skill ->
+                            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                                Text(skill, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+            }
+        }
 
         // Menu items
         val menuItems = listOf(
@@ -88,7 +105,6 @@ fun ProfileScreen(navController: NavController, user: User, onLogout: () -> Unit
             Triple(Icons.Outlined.Settings, "Settings", "settings"),
             Triple(Icons.Outlined.Help, "Help & Support", "help"),
         )
-
         menuItems.forEach { (icon, label, route) ->
             Card(
                 onClick = {
@@ -108,9 +124,8 @@ fun ProfileScreen(navController: NavController, user: User, onLogout: () -> Unit
                 }
             }
         }
-
         Spacer(Modifier.weight(1f))
-
+        
         // Logout
         OutlinedButton(
             onClick = { onLogout() },

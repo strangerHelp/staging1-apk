@@ -1,5 +1,8 @@
 package com.strangerhelp.app.data.model
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
 data class User(
     val id: String = "",
     val name: String = "",
@@ -9,12 +12,14 @@ data class User(
     val area: String = "",
     val phone: String = "",
     val bio: String = "",
+    val skills: String = "[]",
     val verified: Int = 0,
     val is_admin: Int = 0,
 )
 
+@Entity(tableName = "tasks")
 data class Task(
-    val _id: String = "",
+    @PrimaryKey val _id: String = "",
     val title: String = "",
     val description: String = "",
     val category: String = "",
@@ -38,10 +43,16 @@ data class Task(
     val attachments: List<String> = emptyList(),
     val completionProof: List<String> = emptyList(),
     val createdAt: String = "",
+    val trackingActive: Boolean = false,
+    val helperLat: Double? = null,
+    val helperLng: Double? = null,
+    val visibility: String = "public",
+    val inviteCode: String? = null,
 )
 
+@Entity(tableName = "conversations")
 data class Conversation(
-    val _id: String = "",
+    @PrimaryKey val _id: String = "",
     val taskId: String? = null,
     val participants: List<String> = emptyList(),
     val participantNames: List<String> = emptyList(),
@@ -71,8 +82,9 @@ data class Question(
     val createdAt: String = "",
 )
 
+@Entity(tableName = "notifications")
 data class Notification(
-    val id: String = "",
+    @PrimaryKey val id: String = "",
     val user_id: String = "",
     val type: String = "",
     val title: String = "",
@@ -87,8 +99,9 @@ data class NotificationResponse(
     val unreadCount: Int = 0
 )
 
+@Entity(tableName = "meets")
 data class Meet(
-    val id: String = "",
+    @PrimaryKey val id: String = "",
     val title: String = "",
     val description: String = "",
     val category: String = "",
@@ -106,5 +119,16 @@ data class Meet(
 )
 
 data class AuthResponse(val id: String = "", val name: String = "")
+
 data class UserResponse(val user: User?)
+
 data class ErrorResponse(val error: String = "")
+
+@Entity(tableName = "help_requests")
+data class HelpRequest(
+    @PrimaryKey val id: String = "",
+    val title: String = "",
+    val description: String = "",
+    val location: String = "",
+    val status: String = "open"
+)

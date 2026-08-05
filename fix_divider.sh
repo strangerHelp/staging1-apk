@@ -1,0 +1,1 @@
+sed -i 's/Divider(Modifier.padding(top = 8.dp), color = Hairline)/HorizontalDivider(Modifier.padding(top = 8.dp), color = Hairline)/g' app/src/main/java/com/strangerhelp/app/ui/screens/tasks/TasksScreen.kt

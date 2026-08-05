@@ -5,7 +5,6 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface StrangerHelpApi {
-
     // Auth
     @POST("api/auth/login")
     suspend fun login(@Body body: Map<String, String>): Response<AuthResponse>
@@ -27,6 +26,11 @@ interface StrangerHelpApi {
         @Query("lat") lat: Double? = null,
         @Query("lng") lng: Double? = null,
         @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int? = null,
+        @Query("search") search: String? = null,
+        @Query("status") status: String? = null,
+        @Query("urgent") urgent: String? = null,
+        @Query("maxDistance") maxDistance: Int? = null,
     ): Response<List<Task>>
 
     @GET("api/tasks/{id}")
@@ -41,16 +45,27 @@ interface StrangerHelpApi {
         @Part("budget") budget: okhttp3.RequestBody,
         @Part("location") location: okhttp3.RequestBody,
         @Part("urgent") urgent: okhttp3.RequestBody? = null,
+        @Part("visibility") visibility: okhttp3.RequestBody? = null,
         @Part files: List<okhttp3.MultipartBody.Part>? = null
     ): Response<Map<String, String>>
 
     @PATCH("api/tasks/{id}")
     suspend fun claimTask(@Path("id") id: String, @Body body: Map<String, String>): Response<Map<String, Any>>
+    @PATCH("api/tasks/{id}")
+    suspend fun updateTracking(@Path("id") id: String, @Body body: Map<String, Any>): Response<Map<String, Any>>
+
+    
+    @Multipart
+    @PATCH("api/tasks/{id}")
+    suspend fun completeTask(@Path("id") id: String, @Part("action") action: okhttp3.RequestBody, @Part proof: okhttp3.MultipartBody.Part?): Response<Map<String, Any>>
 
     @DELETE("api/tasks/{id}")
     suspend fun deleteTask(@Path("id") id: String): Response<Map<String, Any>>
 
     // Messages
+    @POST("api/messages")
+    suspend fun createConversation(@Body body: Map<String, String>): Response<Conversation>
+
     @GET("api/messages")
     suspend fun getConversations(): Response<List<Conversation>>
 
@@ -59,6 +74,10 @@ interface StrangerHelpApi {
 
     @POST("api/messages/{id}")
     suspend fun sendMessage(@Path("id") conversationId: String, @Body body: Map<String, String>): Response<Message>
+    @Multipart
+    @POST("api/messages/{id}")
+    suspend fun sendMessageMultipart(@Path("id") conversationId: String, @Part text: okhttp3.RequestBody?, @Part files: okhttp3.MultipartBody.Part): Response<Message>
+
 
     // Questions
     @GET("api/questions")

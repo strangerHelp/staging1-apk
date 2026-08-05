@@ -1,0 +1,5 @@
+sed -i '/import android.app.Application/a import androidx.work.Constraints\nimport androidx.work.NetworkType\nimport androidx.work.PeriodicWorkRequestBuilder\nimport androidx.work.WorkManager\nimport java.util.concurrent.TimeUnit\nimport androidx.work.ExistingPeriodicWorkPolicy\nimport com.strangerhelp.app.worker.SyncWorker' app/src/main/java/com/strangerhelp/app/StrangerHelpApp.kt
+
+sed -i '/AppLogger.i("StrangerHelpApp", "Application started successfully.")/i \        setupBackgroundSync()' app/src/main/java/com/strangerhelp/app/StrangerHelpApp.kt
+
+sed -i '/companion object {/i \    private fun setupBackgroundSync() {\n        val constraints = Constraints.Builder()\n            .setRequiredNetworkType(NetworkType.CONNECTED)\n            .build()\n\n        val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)\n            .setConstraints(constraints)\n            .build()\n\n        WorkManager.getInstance(this).enqueueUniquePeriodicWork(\n            "SyncTasks",\n            ExistingPeriodicWorkPolicy.KEEP,\n            syncRequest\n        )\n    }\n' app/src/main/java/com/strangerhelp/app/StrangerHelpApp.kt

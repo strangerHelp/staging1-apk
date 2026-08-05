@@ -1,0 +1,1 @@
+sed -i 's/data class MapPin(val x: Float, val y: Float, val isHelper: Boolean)/data class MapPin(val location: GeoPoint, val isHelper: Boolean)/' app/src/main/java/com/strangerhelp/app/ui/screens/pulse/PulseScreen.kt

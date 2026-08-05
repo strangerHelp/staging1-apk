@@ -1,4 +1,8 @@
 package com.strangerhelp.app.ui.screens.feed
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import android.Manifest
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,13 +32,73 @@ import com.strangerhelp.app.data.model.Task
 import com.strangerhelp.app.data.model.User
 import com.strangerhelp.app.ui.theme.*
 import kotlinx.coroutines.launch
+import com.strangerhelp.app.ui.components.shimmerEffect
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
-@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun RecentTaskShimmer() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, Hairline, RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .shimmerEffect()
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .size(width = 120.dp, height = 16.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .shimmerEffect()
+            )
+            Spacer(Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .size(width = 80.dp, height = 12.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .shimmerEffect()
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(width = 40.dp, height = 20.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .shimmerEffect()
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun FeedScreen(navController: NavController, user: User) {
+    val locationPermissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+
+    LaunchedEffect(Unit) {
+        if (!locationPermissionState.status.isGranted) {
+            locationPermissionState.launchPermissionRequest()
+        }
+    }
     val viewModel: FeedViewModel = viewModel()
     val tasks by viewModel.tasks.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val pullRefreshState = rememberPullToRefreshState()
+    if (pullRefreshState.isRefreshing) {
+        LaunchedEffect(true) {
+            viewModel.loadTasks()
+            pullRefreshState.endRefresh()
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadTasks() // fetch tasks for stats and recent
@@ -46,6 +110,7 @@ fun FeedScreen(navController: NavController, user: User) {
 
     val recentTasks = tasks.sortedByDescending { it.createdAt }.take(5)
 
+    Box(Modifier.fillMaxSize().nestedScroll(pullRefreshState.nestedScrollConnection)) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -146,8 +211,13 @@ fun FeedScreen(navController: NavController, user: User) {
             Spacer(modifier = Modifier.height(16.dp))
 
             if (isLoading) {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RecentTaskShimmer()
+                    RecentTaskShimmer()
+                    RecentTaskShimmer()
                 }
             } else if (recentTasks.isEmpty()) {
                 Text("No tasks yet. Post your first task.", color = Muted, style = MaterialTheme.typography.bodyMedium)
@@ -205,6 +275,11 @@ fun FeedScreen(navController: NavController, user: User) {
             }
         }
     }
+        PullToRefreshContainer(
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+    }
 }
 
 @Composable
@@ -233,7 +308,7 @@ fun StatCard(modifier: Modifier = Modifier, label: String, value: String) {
 
 // Dummy FlowRow layout since FlowRow requires Accompanist or newer compose foundation
 // To be safe in standard compose without experimental flags, I'll use a simple custom Layout or just experimental FlowRow.
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun FlowRow(
     modifier: Modifier = Modifier,

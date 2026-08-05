@@ -1,0 +1,3 @@
+sed -i 's/private val _tasks = MutableStateFlow<List<Task>>(emptyList())/private val db = StrangerHelpApp.instance.database\n    val tasks = db.taskDao().getAllTasks().stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyList())/g' app/src/main/java/com/strangerhelp/app/ui/screens/feed/FeedViewModel.kt
+sed -i '/val tasks = _tasks.asStateFlow()/d' app/src/main/java/com/strangerhelp/app/ui/screens/feed/FeedViewModel.kt
+sed -i 's/_tasks.value = res.body() ?: emptyList()/val body = res.body() ?: emptyList()\n                    db.taskDao().insertTasks(body)/g' app/src/main/java/com/strangerhelp/app/ui/screens/feed/FeedViewModel.kt
