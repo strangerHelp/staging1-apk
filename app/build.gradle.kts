@@ -89,6 +89,11 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     
+    // Vico Charts
+    implementation("com.patrykandpatrick.vico:compose:1.12.0")
+    implementation("com.patrykandpatrick.vico:compose-m3:1.12.0")
+    implementation("com.patrykandpatrick.vico:core:1.12.0")
+    
     // Room
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     val room_version = "2.6.1"

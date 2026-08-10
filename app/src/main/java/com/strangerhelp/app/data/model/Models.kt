@@ -132,3 +132,10 @@ data class HelpRequest(
     val location: String = "",
     val status: String = "open"
 )
+
+@Entity(tableName = "search_history")
+data class SearchHistory(
+    @PrimaryKey val query: String = "",
+    val timestamp: Long = System.currentTimeMillis()
+)
+

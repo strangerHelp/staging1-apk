@@ -10,10 +10,10 @@ private val LightColors = lightColorScheme(
     onPrimary = OnPrimary,
     primaryContainer = SurfaceVariant,
     onPrimaryContainer = Primary,
-    secondary = CyanDeep,
-    onSecondary = OnPrimary,
-    secondaryContainer = Cyan.copy(alpha = 0.15f),
-    onSecondaryContainer = CyanDeep,
+    secondary = Saffron,
+    onSecondary = OnSaffron,
+    secondaryContainer = Saffron.copy(alpha = 0.15f),
+    onSecondaryContainer = Saffron,
     error = Error,
     surface = Surface,
     onSurface = Primary,
@@ -21,16 +21,16 @@ private val LightColors = lightColorScheme(
     onSurfaceVariant = Body,
     outline = Hairline,
     outlineVariant = Hairline,
-    background = Surface,
+    background = BackgroundLight,
     onBackground = Primary
 )
 
 private val DarkColors = darkColorScheme(
-    primary = CyanDeep,
+    primary = Saffron,
     onPrimary = Primary,
     primaryContainer = DarkVariant,
     onPrimaryContainer = DarkOnSurface,
-    secondary = Cyan,
+    secondary = CyanDeep,
     onSecondary = Primary,
     secondaryContainer = CyanDeep.copy(alpha = 0.15f),
     onSecondaryContainer = Cyan,
@@ -41,7 +41,7 @@ private val DarkColors = darkColorScheme(
     onSurfaceVariant = Color(0xFFD1D5DB),
     outline = Color(0xFF374151),
     outlineVariant = Color(0xFF4B5563),
-    background = DarkSurface,
+    background = DarkBackground,
     onBackground = DarkOnSurface
 )
 

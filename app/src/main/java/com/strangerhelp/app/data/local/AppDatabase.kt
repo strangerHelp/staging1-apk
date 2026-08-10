@@ -13,8 +13,10 @@ import com.strangerhelp.app.data.local.dao.ConversationDao
 import com.strangerhelp.app.data.local.dao.NotificationDao
 import com.strangerhelp.app.data.local.dao.MeetDao
 import com.strangerhelp.app.data.local.dao.HelpRequestDao
+import com.strangerhelp.app.data.local.dao.SearchHistoryDao
+import com.strangerhelp.app.data.model.SearchHistory
 
-@Database(entities = [Task::class, Conversation::class, Notification::class, Meet::class, HelpRequest::class], version = 3, exportSchema = false)
+@Database(entities = [Task::class, Conversation::class, Notification::class, Meet::class, HelpRequest::class, SearchHistory::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
@@ -22,4 +24,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
     abstract fun meetDao(): MeetDao
     abstract fun helpRequestDao(): HelpRequestDao
+    abstract fun searchHistoryDao(): SearchHistoryDao
 }

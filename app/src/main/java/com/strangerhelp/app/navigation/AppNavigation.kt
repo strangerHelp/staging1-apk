@@ -46,8 +46,11 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
     val showBottomBar = currentRoute in bottomNavItems.map { it.route }
+    val snackbarHostState = remember { SnackbarHostState() }
 
+    androidx.compose.runtime.CompositionLocalProvider(com.strangerhelp.app.ui.components.LocalSnackbarHostState provides snackbarHostState) {
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
@@ -103,5 +106,6 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                 ChatDetailScreen(navController, user, entry.arguments?.getString("convId") ?: "")
             }
         }
+    }
     }
 }

@@ -14,6 +14,7 @@ import com.strangerhelp.app.data.api.ApiClient
 import com.strangerhelp.app.data.model.User
 import com.strangerhelp.app.navigation.AppNavigation
 import com.strangerhelp.app.ui.screens.auth.LoginScreen
+import com.strangerhelp.app.ui.screens.LandingScreen
 import com.strangerhelp.app.ui.theme.StrangerHelpTheme
 import com.strangerhelp.app.utils.AppLogger
 import kotlinx.coroutines.launch
@@ -52,9 +53,15 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     currentUser == null -> {
-                        LoginScreen(onLoginSuccess = { user ->
-                            currentUser = user
-                        })
+                        var showLogin by remember { mutableStateOf(false) }
+                        if (showLogin) {
+                            LoginScreen(onLoginSuccess = { user ->
+                                currentUser = user
+                                showLogin = false
+                            })
+                        } else {
+                            LandingScreen(onLoginClick = { showLogin = true })
+                        }
                     }
                     else -> {
                         AppNavigation(

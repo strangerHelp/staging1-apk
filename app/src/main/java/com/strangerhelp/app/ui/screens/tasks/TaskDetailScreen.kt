@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +64,7 @@ fun TaskDetailScreen(navController: NavController, user: User, taskId: String, i
     
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val snackbarHostState = com.strangerhelp.app.ui.components.LocalSnackbarHostState.current
 
     fun fetchTask() {
         scope.launch {
@@ -101,7 +104,7 @@ fun TaskDetailScreen(navController: NavController, user: User, taskId: String, i
                     
                     val res = ApiClient.api.completeTask(taskId, actionReq, part)
                     if (res.isSuccessful) {
-                        Toast.makeText(context, "Proof submitted successfully", Toast.LENGTH_SHORT).show()
+                        snackbarHostState.showSnackbar("Proof submitted successfully")
                     }
                 } catch (_: Exception) {}
                 fetchTask()
@@ -182,7 +185,12 @@ fun TaskDetailScreen(navController: NavController, user: User, taskId: String, i
                         onClick = {
                             claiming = true
                             scope.launch {
-                                try { ApiClient.api.claimTask(taskId, mapOf("action" to "claim")) } catch (_: Exception) {}
+                                try { 
+                                    val claimRes = ApiClient.api.claimTask(taskId, mapOf("action" to "claim")) 
+                                    if (claimRes.isSuccessful) {
+                                        snackbarHostState.showSnackbar("Task successfully claimed!")
+                                    }
+                                } catch (_: Exception) {}
                                 fetchTask()
                                 claiming = false
                             }
@@ -245,7 +253,78 @@ fun TaskDetailScreen(navController: NavController, user: User, taskId: String, i
                 } else if (t.status == "claimed") {
                     Text("✓ Claimed by ${t.claimedByName ?: "a helper"}", color = Muted)
                 } else if (t.status == "completed") {
-                    Text("✓ Task completed", color = Muted)
+                    if (t.posterId == user.id) {
+                        val prefs = androidx.compose.ui.platform.LocalContext.current.getSharedPreferences("strangerhelp_prefs", android.content.Context.MODE_PRIVATE)
+                        val ratingKey = "rating_${t._id}"
+                        var rating by remember { mutableStateOf(prefs.getInt(ratingKey, 0)) }
+                        var showRatingDialog by remember { mutableStateOf(false) }
+                        
+                        if (rating == 0) {
+                            Button(
+                                onClick = { showRatingDialog = true },
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = CyanDeep)
+                            ) {
+                                Text("Rate Helper's Performance", fontWeight = FontWeight.SemiBold)
+                            }
+                            
+                            if (showRatingDialog) {
+                                var tempRating by remember { mutableStateOf(0) }
+                                AlertDialog(
+                                    onDismissRequest = { showRatingDialog = false },
+                                    title = { Text("Rate Helper") },
+                                    text = {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text("How was the helper's performance?", style = MaterialTheme.typography.bodyMedium)
+                                            Spacer(Modifier.height(16.dp))
+                                            com.strangerhelp.app.ui.components.StarRating(
+                                                rating = tempRating,
+                                                onRatingChange = { tempRating = it }
+                                            )
+                                        }
+                                    },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = {
+                                                if (tempRating > 0) {
+                                                    rating = tempRating
+                                                    prefs.edit().putInt(ratingKey, tempRating).apply()
+                                                    showRatingDialog = false
+                                                }
+                                            },
+                                            enabled = tempRating > 0
+                                        ) {
+                                            Text("Submit")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showRatingDialog = false }) {
+                                            Text("Cancel")
+                                        }
+                                    }
+                                )
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("You rated the helper:", style = MaterialTheme.typography.bodyMedium, color = Muted)
+                                Spacer(Modifier.height(4.dp))
+                                com.strangerhelp.app.ui.components.StarRating(
+                                    rating = rating,
+                                    onRatingChange = {},
+                                    readOnly = true,
+                                    starSize = 24.dp
+                                )
+                            }
+                        }
+                    } else {
+                        Text("✓ Task completed", color = Muted)
+                    }
                 }
                 
                 // Chat / Message Poster
