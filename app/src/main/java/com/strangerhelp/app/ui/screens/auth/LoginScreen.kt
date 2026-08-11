@@ -22,6 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.strangerhelp.app.data.api.ApiClient
@@ -47,7 +49,7 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.White)
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
@@ -58,7 +60,7 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
+            color = Color.White,
             shadowElevation = 2.dp
         ) {
             Column(
@@ -66,19 +68,19 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Logo
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(vertical = 16.dp)) {
-                    Icon(
-                        imageVector = Icons.Filled.LocationOn,
-                        contentDescription = "Logo",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(72.dp)
-                    )
-                    Icon(
-                        imageVector = Icons.Outlined.Handshake,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.secondary, // Saffron
-                        modifier = Modifier.size(36.dp).padding(bottom = 8.dp)
-                    )
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(vertical = 16.dp)) {
+                    com.strangerhelp.app.ui.components.StrangerHelpLogo(size = 96.dp)
+                    Spacer(Modifier.height(8.dp))
+                    androidx.compose.ui.text.buildAnnotatedString {
+                        withStyle(androidx.compose.ui.text.SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 32.sp)) {
+                            append("stranger")
+                        }
+                        withStyle(androidx.compose.ui.text.SpanStyle(color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, fontSize = 32.sp)) {
+                            append("help")
+                        }
+                    }.let { text ->
+                        Text(text = text)
+                    }
                 }
                 
                 Text(
@@ -290,6 +292,12 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit) {
                     colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = androidx.compose.foundation.BorderStroke(1.dp, Hairline)
                 ) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = com.strangerhelp.app.R.drawable.ic_google),
+                        contentDescription = "Google Logo",
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
                     Text("Google", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }

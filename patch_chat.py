@@ -1,4 +1,7 @@
-package com.strangerhelp.app.ui.screens.chat
+import os
+
+path = 'app/src/main/java/com/strangerhelp/app/ui/screens/chat/ChatDetailScreen.kt'
+content = """package com.strangerhelp.app.ui.screens.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -129,7 +132,10 @@ fun ChatDetailScreen(navController: NavController, user: User, convId: String) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(horizontal = 4.dp)
                     ) {
-                        com.strangerhelp.app.ui.components.StrangerHelpLogo(size = 28.dp)
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Filled.LocationOn, contentDescription = null, tint = Primary, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Outlined.Handshake, contentDescription = null, tint = Saffron, modifier = Modifier.size(12.dp).padding(bottom = 2.dp))
+                        }
                         buildAnnotatedString {
                             withStyle(SpanStyle(color = Primary, fontWeight = FontWeight.Bold, fontSize = 6.sp)) { append("stranger") }
                             withStyle(SpanStyle(color = Saffron, fontWeight = FontWeight.Bold, fontSize = 6.sp)) { append("help") }
@@ -174,7 +180,7 @@ fun ChatDetailScreen(navController: NavController, user: User, convId: String) {
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = { inputText = it },
-                        placeholder = { Text("Message...", color = Color(0xFF64748B)) },
+                        placeholder = { Text("Message...", color = Color(0xFF9CA3AF)) },
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                         shape = RoundedCornerShape(24.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -182,7 +188,8 @@ fun ChatDetailScreen(navController: NavController, user: User, convId: String) {
                             unfocusedBorderColor = Color(0xFFD1D5DB),
                             focusedContainerColor = Color.White,
                             unfocusedContainerColor = Color.White
-                        )
+                        ),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
                     )
                     
                     Spacer(Modifier.width(8.dp))
@@ -244,7 +251,7 @@ fun ChatDetailScreen(navController: NavController, user: User, convId: String) {
                         Column(Modifier.padding(12.dp)) {
                             Text(
                                 text = msg.text, 
-                                color = if(isMe) Color(0xFF64748B) else Primary,
+                                color = if(isMe) Color(0xFF9CA3AF) else Primary,
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             
@@ -282,3 +289,8 @@ fun ChatDetailScreen(navController: NavController, user: User, convId: String) {
         }
     }
 }
+"""
+
+with open(path, 'w', encoding='utf-8') as f:
+    f.write(content)
+print("Updated ChatDetailScreen.kt")

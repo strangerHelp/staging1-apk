@@ -1,4 +1,7 @@
-package com.strangerhelp.app.ui.screens.profile
+import os
+
+path = 'app/src/main/java/com/strangerhelp/app/ui/screens/profile/ProfileScreen.kt'
+content = """package com.strangerhelp.app.ui.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,9 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.navigation.NavController
 import com.strangerhelp.app.data.model.User
 import com.strangerhelp.app.ui.theme.*
@@ -38,53 +38,18 @@ fun ProfileScreen(navController: NavController, user: User, onLogout: () -> Unit
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Top Bar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { /* TODO */ }) {
-                Icon(Icons.Outlined.Menu, contentDescription = "Menu", tint = Primary)
-            }
-            
-            // Logo
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                com.strangerhelp.app.ui.components.StrangerHelpLogo(size = 28.dp)
-                Spacer(Modifier.width(4.dp))
-                androidx.compose.ui.text.buildAnnotatedString {
-                    withStyle(androidx.compose.ui.text.SpanStyle(color = Primary, fontWeight = FontWeight.Bold, fontSize = 16.sp)) { append("stranger") }
-                    withStyle(androidx.compose.ui.text.SpanStyle(color = Saffron, fontWeight = FontWeight.Bold, fontSize = 16.sp)) { append("help") }
-                }.let { text ->
-                    Text(text = text)
-                }
-            }
-            
-            IconButton(onClick = { /* TODO */ }) {
-                Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", tint = Primary)
-            }
-        }
+        Spacer(Modifier.height(24.dp))
         
-        Spacer(Modifier.height(16.dp))
         // Avatar
         Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.size(96.dp)) {
-            if (user.avatar.isNotBlank()) {
-                coil.compose.AsyncImage(
-                    model = user.avatar,
-                    contentDescription = "Avatar",
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                )
-            } else {
-                Surface(modifier = Modifier.fillMaxSize(), shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        Text(
-                            user.name.take(2).uppercase(),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+            Surface(modifier = Modifier.fillMaxSize(), shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        user.name.take(2).uppercase(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
             // Cyan dot
@@ -284,3 +249,8 @@ fun ProfileScreen(navController: NavController, user: User, onLogout: () -> Unit
         Spacer(Modifier.height(32.dp))
     }
 }
+"""
+
+with open(path, 'w') as f:
+    f.write(content)
+print("Updated ProfileScreen.kt")
