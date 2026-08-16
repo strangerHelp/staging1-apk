@@ -7,6 +7,9 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -47,6 +50,19 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
 
     val showBottomBar = currentRoute in bottomNavItems.map { it.route }
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    var unreadCount by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while(true) {
+            try {
+                val res = com.strangerhelp.app.data.api.ApiClient.api.getNotifications()
+                if (res.isSuccessful) {
+                    unreadCount = res.body()?.unreadCount ?: 0
+                }
+            } catch (e: Exception) {}
+            kotlinx.coroutines.delay(10000)
+        }
+    }
 
     androidx.compose.runtime.CompositionLocalProvider(com.strangerhelp.app.ui.components.LocalSnackbarHostState provides snackbarHostState) {
     Scaffold(
@@ -67,7 +83,15 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                                     }
                                 }
                             },
-                            icon = { Icon(if (selected) screen.icon else screen.iconOutlined, screen.label) },
+                            icon = { 
+                                if (screen == Screen.Chat && unreadCount > 0) {
+                                    BadgedBox(badge = { Badge { Text(unreadCount.toString()) } }) {
+                                        Icon(if (selected) screen.icon else screen.iconOutlined, screen.label)
+                                    }
+                                } else {
+                                    Icon(if (selected) screen.icon else screen.iconOutlined, screen.label)
+                                }
+                            },
                             label = { Text(screen.label, style = MaterialTheme.typography.labelSmall) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,

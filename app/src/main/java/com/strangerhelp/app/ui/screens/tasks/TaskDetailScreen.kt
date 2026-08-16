@@ -69,9 +69,7 @@ fun TaskDetailScreen(navController: NavController, user: User, taskId: String, i
     fun fetchTask() {
         scope.launch {
             try {
-                // Should append ?invite=... if needed, but Retrofit api definition is strict right now.
-                // We'll just fetch normally for now.
-                val res = ApiClient.api.getTask(taskId)
+                val res = ApiClient.api.getTask(taskId, inviteCode)
                 if (res.isSuccessful) task = res.body()
             } catch (_: Exception) {}
             loading = false
@@ -86,7 +84,7 @@ fun TaskDetailScreen(navController: NavController, user: User, taskId: String, i
             while (true) {
                 delay(5000)
                 try {
-                    val res = ApiClient.api.getTask(taskId)
+                    val res = ApiClient.api.getTask(taskId, inviteCode)
                     if (res.isSuccessful) task = res.body()
                 } catch (_: Exception) {}
             }

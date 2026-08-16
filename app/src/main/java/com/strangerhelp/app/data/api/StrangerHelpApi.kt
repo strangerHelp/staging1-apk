@@ -34,7 +34,7 @@ interface StrangerHelpApi {
     ): Response<List<Task>>
 
     @GET("api/tasks/{id}")
-    suspend fun getTask(@Path("id") id: String): Response<Task>
+    suspend fun getTask(@Path("id") id: String, @Query("invite") inviteCode: String? = null): Response<Task>
 
     @Multipart
     @POST("api/tasks")

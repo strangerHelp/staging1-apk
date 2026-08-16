@@ -14,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import com.strangerhelp.app.ui.components.LocationPicker
 import com.strangerhelp.app.ui.theme.Hairline
 
@@ -30,6 +33,52 @@ fun PostTaskScreen(navController: NavController) {
     var maxClaimers by remember { mutableStateOf("2") }
     var isUrgent by remember { mutableStateOf(false) }
     var isPosting by remember { mutableStateOf(false) }
+    var isPrivate by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    LaunchedEffect(isPosting) {
+        if (isPosting) {
+            try {
+                val mediaType = "text/plain".toMediaTypeOrNull()
+                val t = title.toRequestBody(mediaType)
+                val d = description.toRequestBody(mediaType)
+                val c = category.toRequestBody(mediaType)
+                val b = budget.toRequestBody(mediaType)
+                val l = location.toRequestBody(mediaType)
+                val u = (if (isUrgent) "1" else "0").toRequestBody(mediaType)
+                val v = (if (isPrivate) "private" else "public").toRequestBody(mediaType)
+                
+                val res = com.strangerhelp.app.data.api.ApiClient.api.postTask(
+                    title = t,
+                    description = d,
+                    category = c,
+                    budget = b,
+                    location = l,
+                    urgent = u,
+                    visibility = v
+                )
+                
+                if (res.isSuccessful) {
+                    val inviteCode = res.body()?.get("inviteCode")
+                    if (isPrivate && inviteCode != null) {
+                        val sendIntent: android.content.Intent = android.content.Intent().apply {
+                            action = android.content.Intent.ACTION_SEND
+                            putExtra(android.content.Intent.EXTRA_TEXT, "Join my private task on StrangerHelp: https://strangerhelp.com/tasks/${res.body()?.get("taskId")}?invite=$inviteCode")
+                            type = "text/plain"
+                        }
+                        val shareIntent = android.content.Intent.createChooser(sendIntent, null)
+                        context.startActivity(shareIntent)
+                    }
+                    navController.popBackStack()
+                } else {
+                    isPosting = false
+                }
+            } catch (e: Exception) {
+                isPosting = false
+            }
+        }
+    }
     
     val categories = listOf("Task", "Document Submission", "Photo Proof", "Parcel Pickup", "Queue Standing", "Verification", "Event / Group Work", "Other")
     val deadlines = listOf("Within 1 hour", "Today", "Tomorrow", "Custom")
@@ -159,7 +208,7 @@ fun PostTaskScreen(navController: NavController) {
 
         Spacer(Modifier.height(16.dp))
 
-        var isPrivate by remember { mutableStateOf(false) }
+
         Card(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
