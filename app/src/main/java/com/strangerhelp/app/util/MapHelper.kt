@@ -2,6 +2,9 @@ package com.strangerhelp.app.util
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 import org.maplibre.android.MapLibre
 import org.maplibre.android.geometry.LatLng
@@ -14,7 +17,10 @@ import org.maplibre.android.offline.OfflineTilePyramidRegionDefinition
 
 object MapHelper {
     private const val TAG = "MapHelper"
-    private const val DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/liberty"
+    const val DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/liberty"
+
+    private val _offlineDownloadProgress = MutableStateFlow<Float?>(null)
+    val offlineDownloadProgress: StateFlow<Float?> = _offlineDownloadProgress.asStateFlow()
 
     fun initMap(context: Context) {
         try {
@@ -67,6 +73,7 @@ object MapHelper {
                 ByteArray(0)
             }
             
+            _offlineDownloadProgress.value = 0f
             manager.createOfflineRegion(definition, metadata, object : OfflineManager.CreateOfflineRegionCallback {
                 override fun onCreate(offlineRegion: OfflineRegion) {
                     Log.d(TAG, "Offline region created successfully: $regionName")
@@ -75,32 +82,38 @@ object MapHelper {
                     offlineRegion.setObserver(object : OfflineRegion.OfflineRegionObserver {
                         override fun onStatusChanged(status: OfflineRegionStatus) {
                             val percentage = if (status.requiredResourceCount >= 0) {
-                                (100.0 * status.completedResourceCount / status.requiredResourceCount)
-                            } else 0.0
+                                (100f * status.completedResourceCount / status.requiredResourceCount)
+                            } else 0f
                             
                             if (status.isComplete) {
                                 Log.d(TAG, "Offline region download complete: $regionName")
+                                _offlineDownloadProgress.value = null // Done
                             } else {
                                 Log.d(TAG, "Offline region downloading: $percentage%")
+                                _offlineDownloadProgress.value = percentage
                             }
                         }
                         
                         override fun onError(error: OfflineRegionError) {
                             Log.e(TAG, "Offline region download error: ${error.reason}, ${error.message}")
+                            _offlineDownloadProgress.value = null
                         }
                         
                         override fun mapboxTileCountLimitExceeded(limit: Long) {
                             Log.e(TAG, "Offline region tile count limit exceeded: $limit")
+                            _offlineDownloadProgress.value = null
                         }
                     })
                 }
                 
                 override fun onError(error: String) {
                     Log.e(TAG, "Error creating offline region: $error")
+                    _offlineDownloadProgress.value = null
                 }
             })
         } catch (e: Exception) {
             Log.e(TAG, "Error initiating offline region download", e)
+            _offlineDownloadProgress.value = null
         }
     }
 }

@@ -1,35 +1,76 @@
-import os
+import re
 
-path = 'app/src/main/java/com/strangerhelp/app/ui/screens/pulse/PulseScreen.kt'
-with open(path, 'r') as f:
+with open('app/src/main/java/com/strangerhelp/app/ui/screens/pulse/PulseScreen.kt', 'r') as f:
     content = f.read()
 
-# Replace bitmap generation with helper and task bitmaps
-bitmap_code = """
-                            val helperBitmap = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888).apply {
-                                val canvas = android.graphics.Canvas(this)
-                                val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor("#00E676") }
-                                canvas.drawCircle(24f, 24f, 20f, paint)
-                                paint.color = android.graphics.Color.WHITE
-                                canvas.drawCircle(24f, 24f, 8f, paint)
-                            }
-                            style.addImage("helper-marker", helperBitmap)
+# 1. Add downloadProgress state
+state_injection = """    val downloadProgress by MapHelper.offlineDownloadProgress.collectAsStateWithLifecycle()
 
-                            val taskBitmap = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888).apply {
-                                val canvas = android.graphics.Canvas(this)
-                                val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor("#FF9800") }
-                                canvas.drawCircle(24f, 24f, 20f, paint)
-                                paint.color = android.graphics.Color.WHITE
-                                paint.textSize = 24f
-                                paint.textAlign = android.graphics.Paint.Align.CENTER
-                                canvas.drawText("!", 24f, 32f, paint)
-                            }
-                            style.addImage("task-marker", taskBitmap)
-"""
-content = content.replace('val defaultMarkerBitmap = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888).apply {\n                                val canvas = android.graphics.Canvas(this)\n                                val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.RED }\n                                canvas.drawCircle(24f, 24f, 24f, paint)\n                            }\n                            style.addImage("marker-icon", defaultMarkerBitmap)', bitmap_code.strip())
+    LaunchedEffect(Unit) {"""
+content = content.replace("    LaunchedEffect(Unit) {", state_injection, 1)
 
-# Replace iconImage
-content = content.replace('iconImage("marker-icon")', 'iconImage(org.maplibre.android.style.expressions.Expression.match(org.maplibre.android.style.expressions.Expression.get("type"), org.maplibre.android.style.expressions.Expression.literal("helper-marker"), org.maplibre.android.style.expressions.Expression.stop("helper", "helper-marker"), org.maplibre.android.style.expressions.Expression.stop("task", "task-marker")))')
+# 2. Add progress bar to the top of the map
+# Looking for:
+#                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+#                     AndroidView(
+#                         factory = { context ->
 
-with open(path, 'w') as f:
+progress_injection = """                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    AndroidView(
+                        factory = { context ->"""
+
+new_progress_injection = """                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    if (downloadProgress != null) {
+                        LinearProgressIndicator(
+                            progress = { downloadProgress!! / 100f },
+                            modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(top = 8.dp, start = 16.dp, end = 16.dp),
+                            color = Saffron
+                        )
+                    }
+                    AndroidView(
+                        factory = { context ->"""
+content = content.replace(progress_injection, new_progress_injection, 1)
+
+# 3. Add a download button to the map controls
+# Looking for:
+#                 SmallFloatingActionButton(
+#                     onClick = {
+#                         mapRef?.animateCamera(CameraUpdateFactory.newLatLngZoom(centerPoint, 13.0))
+#                     },
+#                     containerColor = MaterialTheme.colorScheme.surface,
+#                     contentColor = MaterialTheme.colorScheme.onSurface
+#                 ) {
+#                     Icon(Icons.Outlined.MyLocation, "Locate")
+#                 }
+#             }
+
+download_btn_injection = """                SmallFloatingActionButton(
+                    onClick = {
+                        mapRef?.animateCamera(CameraUpdateFactory.newLatLngZoom(centerPoint, 13.0))
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Icon(Icons.Outlined.MyLocation, "Locate")
+                }
+                
+                SmallFloatingActionButton(
+                    onClick = {
+                        MapHelper.downloadOfflineRegion(context, centerPoint, radiusKm = 10.0, regionName = "PulseRegion")
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Outlined.CloudDownload, "Download Offline Map")
+                }
+            }"""
+
+content = re.sub(
+    r'                SmallFloatingActionButton\(\s*onClick = \{\s*mapRef\?\.animateCamera\(CameraUpdateFactory\.newLatLngZoom\(centerPoint, 13\.0\)\)\s*\},[^)]*\)[^{]*\{\s*Icon\(Icons\.Outlined\.MyLocation, "Locate"\)\s*\}\s*\}',
+    download_btn_injection,
+    content,
+    flags=re.MULTILINE
+)
+
+with open('app/src/main/java/com/strangerhelp/app/ui/screens/pulse/PulseScreen.kt', 'w') as f:
     f.write(content)

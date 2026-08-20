@@ -12,6 +12,12 @@ interface StrangerHelpApi {
     @POST("api/auth/register")
     suspend fun register(@Body body: Map<String, String>): Response<AuthResponse>
 
+    @POST("api/auth/forgot-password")
+    suspend fun forgotPassword(@Body body: Map<String, String>): Response<com.strangerhelp.app.data.model.GenericResponse>
+
+    @POST("api/auth/reset-password")
+    suspend fun resetPassword(@Body body: Map<String, String>): Response<com.strangerhelp.app.data.model.GenericResponse>
+
     @GET("api/auth/me")
     suspend fun getMe(): Response<UserResponse>
 
@@ -68,6 +74,9 @@ interface StrangerHelpApi {
 
     @GET("api/messages")
     suspend fun getConversations(): Response<List<Conversation>>
+
+    @GET("api/messages/conversation/{id}")
+    suspend fun getConversation(@Path("id") conversationId: String): Response<Conversation>
 
     @GET("api/messages/{id}")
     suspend fun getMessages(@Path("id") conversationId: String): Response<List<Message>>

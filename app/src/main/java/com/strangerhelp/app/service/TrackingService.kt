@@ -14,16 +14,20 @@ import com.google.android.gms.location.*
 import com.strangerhelp.app.MainActivity
 import com.strangerhelp.app.R
 import com.strangerhelp.app.data.api.ApiClient
+import com.strangerhelp.app.utils.BatteryMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 
 class TrackingService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private var currentTaskId: String? = null
+    private var isBatteryLow = false
+    private var batteryMonitorJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -46,6 +50,18 @@ class TrackingService : Service() {
                         } catch (e: Exception) {
                             // ignore
                         }
+                    }
+                }
+            }
+        }
+        
+        // Monitor battery saver mode and adjust frequency dynamically
+        batteryMonitorJob = serviceScope.launch {
+            BatteryMonitor.isBatterySaverMode.collect { low ->
+                if (isBatteryLow != low) {
+                    isBatteryLow = low
+                    if (currentTaskId != null) {
+                        startLocationUpdates()
                     }
                 }
             }
@@ -73,26 +89,31 @@ class TrackingService : Service() {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
-
         val pendingIntent = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE
         )
-
         val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("StrangerHelp Tracking")
             .setContentText("Sharing live location with the task poster...")
             .setSmallIcon(R.drawable.ic_launcher_foreground) // fallback icon
             .setContentIntent(pendingIntent)
             .build()
-
         startForeground(1, notification)
     }
 
     private fun startLocationUpdates() {
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
-            .setMinUpdateIntervalMillis(5000)
+        // Stop previous updates if running to switch intervals smoothly
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+
+        // Adjust tracking intensity based on battery state
+        val interval = if (isBatteryLow) 30000L else 10000L
+        val minInterval = if (isBatteryLow) 15000L else 5000L
+        val priority = if (isBatteryLow) Priority.PRIORITY_BALANCED_POWER_ACCURACY else Priority.PRIORITY_HIGH_ACCURACY
+
+        val request = LocationRequest.Builder(priority, interval)
+            .setMinUpdateIntervalMillis(minInterval)
             .build()
         
         try {
@@ -108,6 +129,7 @@ class TrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        batteryMonitorJob?.cancel()
         fusedLocationClient.removeLocationUpdates(locationCallback)
         // Optionally notify server that tracking stopped if not done via UI
         val taskId = currentTaskId

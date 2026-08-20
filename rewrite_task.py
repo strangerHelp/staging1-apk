@@ -1,4 +1,8 @@
-package com.strangerhelp.app.ui.screens.tasks
+import os
+
+filepath = 'app/src/main/java/com/strangerhelp/app/ui/screens/tasks/TaskDetailScreen.kt'
+
+content = """package com.strangerhelp.app.ui.screens.tasks
 
 import android.content.Intent
 import android.widget.Toast
@@ -202,7 +206,7 @@ fun TaskDetailScreen(navController: NavController, user: User, taskId: String, i
                             Icon(Icons.Filled.AttachMoney, "Money", tint = CyanDeep, modifier = Modifier.size(24.dp))
                             Spacer(Modifier.width(4.dp))
                             Column {
-                                Text("₹${t.budget}", fontWeight = FontWeight.Bold, color = CyanDeep, fontSize = 16.sp)
+                                Text("$${t.budget}", fontWeight = FontWeight.Bold, color = CyanDeep, fontSize = 16.sp)
                                 Text("Reward", color = CyanDeep, fontSize = 14.sp)
                             }
                         }
@@ -346,3 +350,9 @@ fun TaskDetailScreen(navController: NavController, user: User, taskId: String, i
         }
     }
 }
+"""
+
+with open(filepath, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("Rewrite complete")

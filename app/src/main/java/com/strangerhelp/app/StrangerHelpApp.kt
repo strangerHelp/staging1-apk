@@ -36,6 +36,7 @@ class StrangerHelpApp : Application() {
         }
         
         setupBackgroundSync()
+        com.strangerhelp.app.utils.BatteryMonitor.init(this)
         com.strangerhelp.app.util.MapHelper.initMap(this)
         AppLogger.i("StrangerHelpApp", "Application started successfully.")
     }
@@ -43,6 +44,7 @@ class StrangerHelpApp : Application() {
     private fun setupBackgroundSync() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiresBatteryNotLow(true) // Battery-saving mode: reduces background task intensity
             .build()
 
         val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)

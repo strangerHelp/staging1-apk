@@ -86,7 +86,22 @@ fun ChatDetailScreen(navController: NavController, user: User, convId: String) {
         } else messages
     }
     
-    val otherUserName = displayMessages.firstOrNull { it.senderId != user.id }?.senderName ?: "Elena Rodriguez"
+    var otherUserName by remember { mutableStateOf("User") }
+    
+    LaunchedEffect(convId) {
+        try {
+            val res = ApiClient.api.getConversation(convId)
+            if (res.isSuccessful && res.body() != null) {
+                val conv = res.body()!!
+                otherUserName = conv.participantNames.zip(conv.participants)
+                    .firstOrNull { it.second != user.id }?.first ?: conv.participantNames.lastOrNull() ?: "User"
+            } else {
+                otherUserName = displayMessages.firstOrNull { it.senderId != user.id }?.senderName ?: "User"
+            }
+        } catch(e: Exception) {
+            otherUserName = displayMessages.firstOrNull { it.senderId != user.id }?.senderName ?: "User"
+        }
+    }
 
     fun loadMessages() {
         scope.launch {

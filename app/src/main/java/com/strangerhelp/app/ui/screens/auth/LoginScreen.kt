@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen(onLoginSuccess: (User) -> Unit) {
+fun LoginScreen(onLoginSuccess: (User) -> Unit, onForgotPasswordClick: () -> Unit = {}) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
@@ -224,7 +224,7 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit) {
                 if (!isRegister) {
                     Spacer(Modifier.height(8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { /* Handle password reset */ }) {
+                        TextButton(onClick = onForgotPasswordClick) {
                             Text("Forgot password?", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                         }
                     }

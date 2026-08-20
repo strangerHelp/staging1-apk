@@ -32,26 +32,28 @@ import com.strangerhelp.app.ui.screens.leaderboard.LeaderboardScreen
 import com.strangerhelp.app.ui.screens.ask.AskScreen
 import com.strangerhelp.app.ui.screens.pulse.PulseScreen
 import com.strangerhelp.app.ui.screens.notifications.NotificationsScreen
+import com.strangerhelp.app.ui.theme.Saffron
+import com.strangerhelp.app.ui.theme.OnSaffron
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector, val iconOutlined: ImageVector) {
-    object Feed : Screen("feed", "Home", Icons.Filled.Home, Icons.Outlined.Home)
-    object Tasks : Screen("tasks", "Tasks", Icons.Filled.Explore, Icons.Outlined.Explore)
-    object Post : Screen("post", "Post", Icons.Filled.AddCircle, Icons.Outlined.AddCircle)
-    object Chat : Screen("chat", "Messages", Icons.Filled.ChatBubble, Icons.Outlined.ChatBubbleOutline)
+    object Feed : Screen("feed", "Feed", Icons.Filled.ViewStream, Icons.Outlined.ViewStream)
+    object Tasks : Screen("tasks", "Tasks", Icons.Filled.Assignment, Icons.Outlined.Assignment)
+    object Post : Screen("post", "Post", Icons.Filled.AddCircle, Icons.Outlined.AddCircleOutline)
+    object Chat : Screen("chat", "Chat", Icons.Filled.Chat, Icons.Outlined.Chat)
     object Profile : Screen("profile", "Profile", Icons.Filled.Person, Icons.Outlined.Person)
 }
 
-val bottomNavItems = listOf(Screen.Feed, Screen.Tasks, Screen.Chat, Screen.Profile)
+val bottomNavItems = listOf(Screen.Feed, Screen.Tasks, Screen.Post, Screen.Chat, Screen.Profile)
 
 @Composable
 fun AppNavigation(user: User, onLogout: () -> Unit) {
     val navController = rememberNavController()
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-
     val showBottomBar = currentRoute in bottomNavItems.map { it.route }
     val snackbarHostState = remember { SnackbarHostState() }
     
     var unreadCount by remember { mutableIntStateOf(0) }
+
     LaunchedEffect(Unit) {
         while(true) {
             try {
@@ -83,8 +85,8 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                                     }
                                 }
                             },
-                            icon = { 
-                                if (screen == Screen.Chat && unreadCount > 0) {
+                            icon = {
+                                 if (screen == Screen.Chat && unreadCount > 0) {
                                     BadgedBox(badge = { Badge { Text(unreadCount.toString()) } }) {
                                         Icon(if (selected) screen.icon else screen.iconOutlined, screen.label)
                                     }
@@ -94,8 +96,9 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                             },
                             label = { Text(screen.label, style = MaterialTheme.typography.labelSmall) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+                                selectedIconColor = OnSaffron,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                indicatorColor = Saffron,
                             )
                         )
                     }
@@ -109,6 +112,7 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
             composable(Screen.Post.route) { PostTaskScreen(navController) }
             composable(Screen.Chat.route) { ChatListScreen(navController, user) }
             composable(Screen.Profile.route) { ProfileScreen(navController, user, onLogout) }
+            
             composable("meets") { MeetsScreen(navController) }
             composable("wallet") { WalletScreen(navController) }
             composable("leaderboard") { LeaderboardScreen(navController) }
@@ -117,12 +121,14 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
             composable("notifications") { NotificationsScreen(navController) }
             composable("postMeet") { PostMeetScreen(navController) }
             composable("postQuestion") { PostQuestionScreen(navController) }
+            
             composable(
                 "task/{taskId}",
                 arguments = listOf(navArgument("taskId") { type = NavType.StringType })
             ) { entry ->
                 TaskDetailScreen(navController, user, entry.arguments?.getString("taskId") ?: "")
             }
+            
             composable(
                 "chat/{convId}",
                 arguments = listOf(navArgument("convId") { type = NavType.StringType })

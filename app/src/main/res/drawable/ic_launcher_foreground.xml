@@ -1,20 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- Background of foreground (transparent so adaptive background shows) -->
+    <!-- White Background behind the icon so it pops perfectly -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 54 28 C 41 28 31 38 31 51 C 31 68 54 90 54 90 C 54 90 77 68 77 51 C 77 38 67 28 54 28 Z" />
 
-    <!-- Map Pin -->
+    <!-- Dark Navy Map Pin -->
     <path
         android:fillColor="#0F172A"
-        android:pathData="M54,22 C40.1,22 28.8,33.3 28.8,47.2 C28.8,66.1 54,94 54,94 C54,94 79.2,66.1 79.2,47.2 C79.2,33.3 67.9,22 54,22 Z" />
+        android:pathData="M 54 30 C 42 30 33 39 33 51 C 33 67 54 87 54 87 C 54 87 75 67 75 51 C 75 39 66 30 54 30 Z" />
         
     <!-- White Circle Cutout -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,45 m-16,0 a16,16 0,1,1 32,0 a16,16 0,1,1 -32,0" />
+        android:pathData="M 54 50 m -12 0 a 12 12 0 1 1 24 0 a 12 12 0 1 1 -24 0" />
 
     <!-- Handshake Outline Left (Dark) -->
     <path
@@ -22,7 +26,7 @@
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M48,45 L41,39 C39.5,37.5 36,38 36,41 L36,46 C36,48 37,49 38,50 L46,55 L49,51 Z" />
+        android:pathData="M 49 50 L 44 45 C 43 44 40 44 40 47 L 40 51 C 40 52.5 41 53.5 42 54.5 L 48 58 L 50.5 55 Z" />
         
     <!-- Handshake Outline Right (Orange) -->
     <path
@@ -30,6 +34,5 @@
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M52,45 L59,39 C60.5,37.5 64,38 64,41 L64,46 C64,48 63,49 62,50 L54,55 L51,51 Z" />
-        
+        android:pathData="M 52 50 L 57 45 C 58 44 61 44 61 47 L 61 51 C 61 52.5 60 53.5 59 54.5 L 53 58 L 50.5 55 Z" />
 </vector>

@@ -1,4 +1,7 @@
-package com.strangerhelp.app.ui.screens.pulse
+import os
+
+path = 'app/src/main/java/com/strangerhelp/app/ui/screens/pulse/PulseScreen.kt'
+content = """package com.strangerhelp.app.ui.screens.pulse
 
 import android.Manifest
 import android.graphics.Bitmap
@@ -38,8 +41,6 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
-import com.strangerhelp.app.util.MapHelper
-import com.strangerhelp.app.utils.BatteryMonitor
 import org.maplibre.android.maps.Style
 import kotlin.random.Random
 import org.maplibre.android.offline.OfflineManager
@@ -63,26 +64,11 @@ fun getFeatureCollection(pins: List<MapPin>): FeatureCollection {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
-fun PulseScreen(navController: NavController) {
+fun PulseScreen(navController: NavController, viewModel: PulseViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
     val context = LocalContext.current
-    val db = com.strangerhelp.app.StrangerHelpApp.instance.database
-    val helpRequests by db.helpRequestDao().getAllHelpRequests().collectAsStateWithLifecycle(initialValue = emptyList())
-    var isLoading by remember { mutableStateOf(true) }
-    val downloadProgress by MapHelper.offlineDownloadProgress.collectAsStateWithLifecycle()
-
-    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); isLoading = false }
+    val helpRequests by viewModel.helpRequests.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val locationPermissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
-    
-    val isBatterySaver by BatteryMonitor.isBatterySaverMode.collectAsStateWithLifecycle()
-    
-    // Simulating map refresh frequency adapting to battery state
-    LaunchedEffect(isBatterySaver) {
-        while(true) {
-            val delayMillis = if (isBatterySaver) 30000L else 10000L
-            kotlinx.coroutines.delay(delayMillis)
-            // Simulated map data refresh...
-        }
-    }
     
     var isOnline by remember { mutableStateOf(false) }
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
@@ -220,27 +206,6 @@ fun PulseScreen(navController: NavController) {
                 }
             )
             
-            if (downloadProgress != null) {
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 16.dp, start = 16.dp, end = 16.dp)
-                        .fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Downloading Offline Map...", fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp))
-                        LinearProgressIndicator(
-                            progress = { downloadProgress!! / 100f },
-                            modifier = Modifier.fillMaxWidth(),
-                            color = Saffron
-                        )
-                    }
-                }
-            }
-
             // Map Controls
             Column(
                 modifier = Modifier
@@ -280,16 +245,6 @@ fun PulseScreen(navController: NavController) {
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     Icon(Icons.Outlined.MyLocation, "Locate")
-                }
-                
-                SmallFloatingActionButton(
-                    onClick = {
-                        MapHelper.downloadOfflineRegion(context, centerPoint, radiusKm = 10.0, regionName = "PulseRegion")
-                    },
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Outlined.CloudDownload, "Download Offline Map")
                 }
             }
 
@@ -410,3 +365,7 @@ fun PulseScreen(navController: NavController) {
         }
     }
 }
+"""
+
+with open(path, 'w') as f:
+    f.write(content)

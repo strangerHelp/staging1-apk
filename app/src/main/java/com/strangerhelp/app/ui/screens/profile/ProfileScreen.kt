@@ -44,8 +44,34 @@ fun ProfileScreen(navController: NavController, user: User, onLogout: () -> Unit
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { /* TODO */ }) {
-                Icon(Icons.Outlined.Menu, contentDescription = "Menu", tint = Primary)
+            Box {
+                var menuExpanded by remember { mutableStateOf(false) }
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Outlined.Menu, contentDescription = "Menu", tint = Primary)
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Settings") },
+                        onClick = { menuExpanded = false },
+                        leadingIcon = { Icon(Icons.Outlined.Settings, contentDescription = null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Help & Support") },
+                        onClick = { menuExpanded = false },
+                        leadingIcon = { Icon(Icons.Outlined.HelpOutline, contentDescription = null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Logout") },
+                        onClick = {
+                            menuExpanded = false
+                            onLogout()
+                        },
+                        leadingIcon = { Icon(Icons.Outlined.ExitToApp, contentDescription = null) }
+                    )
+                }
             }
             
             // Logo

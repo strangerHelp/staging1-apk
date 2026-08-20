@@ -122,6 +122,8 @@ data class AuthResponse(val id: String = "", val name: String = "")
 
 data class UserResponse(val user: User?)
 
+data class GenericResponse(val ok: Boolean = false, val message: String = "")
+
 data class ErrorResponse(val error: String = "")
 
 @Entity(tableName = "help_requests")
