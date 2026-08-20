@@ -12,14 +12,17 @@ interface StrangerHelpApi {
     @POST("api/auth/register")
     suspend fun register(@Body body: Map<String, String>): Response<AuthResponse>
 
-    @POST("api/auth/forgot-password")
+    @POST("api/auth/forgot")
     suspend fun forgotPassword(@Body body: Map<String, String>): Response<com.strangerhelp.app.data.model.GenericResponse>
 
-    @POST("api/auth/reset-password")
+    @POST("api/auth/reset")
     suspend fun resetPassword(@Body body: Map<String, String>): Response<com.strangerhelp.app.data.model.GenericResponse>
 
     @GET("api/auth/me")
     suspend fun getMe(): Response<UserResponse>
+
+    @POST("api/auth/verify-email")
+    suspend fun verifyEmail(): Response<com.strangerhelp.app.data.model.GenericResponse>
 
     @POST("api/auth/logout")
     suspend fun logout(): Response<Map<String, Any>>

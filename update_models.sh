@@ -1,0 +1,1 @@
+sed -i 's/val verified: Int = 0,/val verified: Int = 0,\n    val emailVerified: Boolean = false,\n    val handle: String = "",\n    val banned: Int = 0,/' app/src/main/java/com/strangerhelp/app/data/model/Models.kt

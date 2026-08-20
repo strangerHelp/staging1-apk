@@ -24,6 +24,7 @@ import com.strangerhelp.app.ui.screens.post.PostTaskScreen
 import com.strangerhelp.app.ui.screens.post.PostMeetScreen
 import com.strangerhelp.app.ui.screens.post.PostQuestionScreen
 import com.strangerhelp.app.ui.screens.profile.ProfileScreen
+import com.strangerhelp.app.ui.screens.profile.EditProfileScreen
 import com.strangerhelp.app.ui.screens.tasks.TaskDetailScreen
 import com.strangerhelp.app.ui.screens.tasks.TasksScreen
 import com.strangerhelp.app.ui.screens.meets.MeetsScreen
@@ -111,7 +112,7 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
             composable(Screen.Tasks.route) { TasksScreen(navController) }
             composable(Screen.Post.route) { PostTaskScreen(navController) }
             composable(Screen.Chat.route) { ChatListScreen(navController, user) }
-            composable(Screen.Profile.route) { ProfileScreen(navController, user, onLogout) }
+            composable(Screen.Profile.route) { ProfileScreen(navController, onLogout = onLogout) }
             
             composable("meets") { MeetsScreen(navController) }
             composable("wallet") { WalletScreen(navController) }
@@ -121,6 +122,7 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
             composable("notifications") { NotificationsScreen(navController) }
             composable("postMeet") { PostMeetScreen(navController) }
             composable("postQuestion") { PostQuestionScreen(navController) }
+            composable("edit_profile") { EditProfileScreen(navController, user) }
             
             composable(
                 "task/{taskId}",

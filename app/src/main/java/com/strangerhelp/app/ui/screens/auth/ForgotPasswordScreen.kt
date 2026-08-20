@@ -1,11 +1,17 @@
 package com.strangerhelp.app.ui.screens.auth
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,12 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.strangerhelp.app.data.api.ApiClient
-import com.strangerhelp.app.ui.theme.Hairline
-import com.strangerhelp.app.ui.theme.Muted
+import com.strangerhelp.app.ui.theme.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,86 +39,112 @@ fun ForgotPasswordScreen(navController: NavController) {
     
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("Forgot Password", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = BackgroundLight
                 )
             )
-        }
+        },
+        containerColor = BackgroundLight
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(32.dp))
             
             Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant
+                shape = CircleShape,
+                color = Color(0xFFF2F2F2),
+                border = BorderStroke(1.dp, Color(0xFFE5E5E5)),
+                modifier = Modifier.size(64.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "\uD83D\uDD12 Trouble logging in?",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "Enter your email and we'll send you a link to reset your password.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.Lock, contentDescription = null, tint = Primary, modifier = Modifier.size(28.dp))
                 }
             }
             
             Spacer(Modifier.height(24.dp))
             
-            OutlinedTextField(
-                value = email,
-                onValueChange = { 
-                    email = it
-                    error = null
-                },
-                label = { Text("Email Address") },
-                placeholder = { Text("user@example.com", color = Muted) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrect = false),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Hairline
-                )
+            Text(
+                text = "Trouble logging in?",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineMedium,
+                color = Primary
             )
             
+            Spacer(Modifier.height(16.dp))
+            
+            Text(
+                text = "Enter your email and we'll send you a\nlink to reset your password.",
+                color = Body,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(Modifier.height(32.dp))
+            
             if (error != null) {
-                Spacer(Modifier.height(16.dp))
                 Surface(
-                    color = MaterialTheme.colorScheme.errorContainer,
+                    color = Color(0xFFFFEBEB),
                     shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Color(0xFFFFCDCD)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "❌ $error",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Outlined.ErrorOutline, contentDescription = null, tint = Color(0xFFB3261E))
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = error!!,
+                            color = Color(0xFFB3261E),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
+                Spacer(Modifier.height(16.dp))
+            }
+            
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Email Address",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Primary
+                )
+                
+                Spacer(Modifier.height(8.dp))
+                
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { 
+                        email = it
+                        error = null
+                    },
+                    placeholder = { Text("user@example.com", color = Muted) },
+                    leadingIcon = { Icon(Icons.Outlined.Email, contentDescription = null, tint = Muted) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrect = false),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = Primary,
+                        unfocusedBorderColor = Hairline
+                    )
+                )
             }
             
             Spacer(Modifier.height(24.dp))
@@ -148,45 +181,37 @@ fun ForgotPasswordScreen(navController: NavController) {
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(26.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                    .height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Primary),
                 enabled = email.isNotBlank() && !isLoading
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onSecondary,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
                         text = "Send Reset Link",
-                        color = MaterialTheme.colorScheme.onSecondary,
-                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
                         fontSize = 16.sp
                     )
                 }
             }
             
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(48.dp))
             
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                HorizontalDivider(Modifier.weight(1f), color = Hairline)
-                Text("OR", Modifier.padding(horizontal = 16.dp), color = Muted, style = MaterialTheme.typography.labelSmall)
-                HorizontalDivider(Modifier.weight(1f), color = Hairline)
-            }
-            
-            Spacer(Modifier.height(16.dp))
-            
-            TextButton(onClick = { navController.popBackStack() }) {
-                Text(
-                    text = "\uD83D\uDD10 Back to Login",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            }
+            Text(
+                text = "Back to Login",
+                color = Primary,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                style = MaterialTheme.typography.bodyLarge.copy(textDecoration = TextDecoration.Underline),
+                modifier = Modifier.clickable { navController.popBackStack() }.padding(8.dp)
+            )
         }
     }
 }

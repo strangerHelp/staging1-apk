@@ -1,0 +1,1 @@
+sed -i 's/suspend fun getMe(): Response<UserResponse>/suspend fun getMe(): Response<UserResponse>\n\n    @POST("api\/auth\/verify-email")\n    suspend fun verifyEmail(): Response<com.strangerhelp.app.data.model.GenericResponse>/' app/src/main/java/com/strangerhelp/app/data/api/StrangerHelpApi.kt

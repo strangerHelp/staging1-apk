@@ -14,6 +14,9 @@ data class User(
     val bio: String = "",
     val skills: String = "[]",
     val verified: Int = 0,
+    val emailVerified: Boolean = false,
+    val handle: String = "",
+    val banned: Int = 0,
     val is_admin: Int = 0,
 )
 
@@ -141,3 +144,5 @@ data class SearchHistory(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+data class UserStats(val rating: Double = 0.0, val totalReviews: Int = 0, val tasksCompleted: Int = 0, val completionRate: Int = 0, val trustScore: Int = 0)
+data class StatsResponse(val stats: UserStats)
