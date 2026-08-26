@@ -1,6 +1,14 @@
 package com.strangerhelp.app.data.api
 
-import com.strangerhelp.app.data.model.*
+import com.strangerhelp.app.data.model.AuthResponse
+import com.strangerhelp.app.data.model.UserResponse
+import com.strangerhelp.app.data.model.Task
+import com.strangerhelp.app.data.model.Conversation
+import com.strangerhelp.app.data.model.Message
+import com.strangerhelp.app.data.model.Question
+import com.strangerhelp.app.data.model.NotificationResponse
+import com.strangerhelp.app.data.model.Meet
+import com.strangerhelp.app.data.model.PathResponse
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -8,24 +16,40 @@ interface StrangerHelpApi {
     // Auth
     @POST("api/auth/login")
     suspend fun login(@Body body: Map<String, String>): Response<AuthResponse>
-
+    
     @POST("api/auth/register")
     suspend fun register(@Body body: Map<String, String>): Response<AuthResponse>
-
+    
     @POST("api/auth/forgot")
     suspend fun forgotPassword(@Body body: Map<String, String>): Response<com.strangerhelp.app.data.model.GenericResponse>
-
+    
     @POST("api/auth/reset")
     suspend fun resetPassword(@Body body: Map<String, String>): Response<com.strangerhelp.app.data.model.GenericResponse>
-
+    
     @GET("api/auth/me")
     suspend fun getMe(): Response<UserResponse>
-
+    
     @POST("api/auth/verify-email")
-    suspend fun verifyEmail(): Response<com.strangerhelp.app.data.model.GenericResponse>
-
+    suspend fun resendVerification(): Response<com.strangerhelp.app.data.model.GenericResponse>
+    
+    @GET("api/auth/verify-email")
+    suspend fun verifyEmail(@Query("token") token: String): Response<com.strangerhelp.app.data.model.GenericResponse>
+    
     @POST("api/auth/logout")
     suspend fun logout(): Response<Map<String, Any>>
+    
+    @GET("api/auth/verify")
+    suspend fun getVerificationStatus(): Response<com.strangerhelp.app.data.model.VerificationStatus>
+    
+    @Multipart
+    @POST("api/auth/verify")
+    suspend fun submitVerification(
+        @Part("idType") idType: okhttp3.RequestBody,
+        @Part("idNumber") idNumber: okhttp3.RequestBody,
+        @Part front: okhttp3.MultipartBody.Part,
+        @Part selfie: okhttp3.MultipartBody.Part,
+        @Part back: okhttp3.MultipartBody.Part? = null
+    ): Response<com.strangerhelp.app.data.model.GenericResponse>
 
     // Tasks
     @GET("api/tasks")
@@ -41,10 +65,10 @@ interface StrangerHelpApi {
         @Query("urgent") urgent: String? = null,
         @Query("maxDistance") maxDistance: Int? = null,
     ): Response<List<Task>>
-
+    
     @GET("api/tasks/{id}")
     suspend fun getTask(@Path("id") id: String, @Query("invite") inviteCode: String? = null): Response<Task>
-
+    
     @Multipart
     @POST("api/tasks")
     suspend fun postTask(
@@ -57,67 +81,91 @@ interface StrangerHelpApi {
         @Part("visibility") visibility: okhttp3.RequestBody? = null,
         @Part files: List<okhttp3.MultipartBody.Part>? = null
     ): Response<Map<String, String>>
-
-    @PATCH("api/tasks/{id}")
-    suspend fun claimTask(@Path("id") id: String, @Body body: Map<String, String>): Response<Map<String, Any>>
-    @PATCH("api/tasks/{id}")
-    suspend fun updateTracking(@Path("id") id: String, @Body body: Map<String, Any>): Response<Map<String, Any>>
-
     
+    @PATCH("api/tasks/{id}")
+    suspend fun claimTask(@Path("id") id: String, @Body body: com.strangerhelp.app.data.model.ClaimTaskRequest): Response<com.strangerhelp.app.data.model.ClaimResponse>
+    
+    @PATCH("api/tasks/{id}")
+    suspend fun updateTracking(@Path("id") id: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<Map<String, Any>>
+        
     @Multipart
     @PATCH("api/tasks/{id}")
     suspend fun completeTask(@Path("id") id: String, @Part("action") action: okhttp3.RequestBody, @Part proof: okhttp3.MultipartBody.Part?): Response<Map<String, Any>>
-
+    
     @DELETE("api/tasks/{id}")
     suspend fun deleteTask(@Path("id") id: String): Response<Map<String, Any>>
-
+    
     // Messages
     @POST("api/messages")
     suspend fun createConversation(@Body body: Map<String, String>): Response<Conversation>
-
+    
     @GET("api/messages")
     suspend fun getConversations(): Response<List<Conversation>>
-
+    
     @GET("api/messages/conversation/{id}")
     suspend fun getConversation(@Path("id") conversationId: String): Response<Conversation>
-
+    
     @GET("api/messages/{id}")
     suspend fun getMessages(@Path("id") conversationId: String): Response<List<Message>>
-
+    
     @POST("api/messages/{id}")
     suspend fun sendMessage(@Path("id") conversationId: String, @Body body: Map<String, String>): Response<Message>
+    
     @Multipart
     @POST("api/messages/{id}")
     suspend fun sendMessageMultipart(@Path("id") conversationId: String, @Part text: okhttp3.RequestBody?, @Part files: okhttp3.MultipartBody.Part): Response<Message>
-
-
+    
     // Questions
     @GET("api/questions")
     suspend fun getQuestions(@Query("category") category: String? = null): Response<List<Question>>
-
+    
     // Notifications
     @GET("api/notifications")
     suspend fun getNotifications(): Response<NotificationResponse>
-
+    
     // Meets
     @GET("api/meets")
     suspend fun getMeets(): Response<List<Meet>>
-
+    
     @POST("api/meets/{id}")
     suspend fun actionMeet(@Path("id") id: String, @Body body: Map<String, String>): Response<Map<String, Any>>
-
+    
     // Users
     @GET("api/users/{id}")
     suspend fun getUserProfile(@Path("id") id: String): Response<Map<String, Any>>
-
+    
     // Support & Reports
     @POST("api/support")
     suspend fun contactSupport(@Body body: Map<String, String>): Response<Map<String, Any>>
-
+    
     @POST("api/reports")
     suspend fun reportItem(@Body body: Map<String, String>): Response<Map<String, Any>>
-
+    
     // Pulse
     @GET("api/pulse")
     suspend fun getPulse(): Response<Map<String, Any>>
+
+    // Path
+    @POST("api/path")
+    suspend fun setPath(
+        @Body body: okhttp3.RequestBody
+    ): Response<com.google.gson.JsonObject>
+
+    @GET("api/path")
+    suspend fun getPath(): Response<PathResponse>
+
+    @DELETE("api/path")
+    suspend fun clearPath(): Response<com.google.gson.JsonObject>
+
+    // Reviews
+    @POST("api/reviews")
+    suspend fun postReview(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<com.strangerhelp.app.data.model.GenericResponse>
+
+    @GET("api/support")
+    suspend fun getSupportMessages(): Response<com.strangerhelp.app.data.model.SupportResponse>
+
+    @POST("api/support")
+    suspend fun sendSupportMessage(
+        @Body body: Map<String, String>
+    ): Response<com.strangerhelp.app.data.model.SupportResponse>
 }

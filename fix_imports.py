@@ -1,10 +1,7 @@
-import os
+with open("app/src/main/java/com/strangerhelp/app/navigation/AppNavigation.kt", "r") as f:
+    content = f.read()
 
-for path in ['app/src/main/java/com/strangerhelp/app/ui/screens/auth/LoginScreen.kt', 'app/src/main/java/com/strangerhelp/app/ui/screens/LandingScreen.kt']:
-    with open(path, 'r') as f:
-        content = f.read()
-    
-    content = content.replace('import withStyle', 'import androidx.compose.ui.text.withStyle')
-    
-    with open(path, 'w') as f:
-        f.write(content)
+content = content.replace("import com.strangerhelp.app.data.model.User", "import com.strangerhelp.app.data.model.User\nimport androidx.lifecycle.viewmodel.compose.viewModel\nimport com.strangerhelp.app.ui.screens.chat.ChatViewModel")
+
+with open("app/src/main/java/com/strangerhelp/app/navigation/AppNavigation.kt", "w") as f:
+    f.write(content)

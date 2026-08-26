@@ -1,25 +1,41 @@
 package com.strangerhelp.app.navigation
 
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Badge
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
+import androidx.navigation.navDeepLink
 import androidx.navigation.navArgument
 import com.strangerhelp.app.data.model.User
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.strangerhelp.app.ui.screens.chat.ChatViewModel
 import com.strangerhelp.app.ui.screens.chat.ChatDetailScreen
 import com.strangerhelp.app.ui.screens.chat.ChatListScreen
 import com.strangerhelp.app.ui.screens.feed.FeedScreen
+import com.strangerhelp.app.ui.screens.profile.VerifyIdScreen
+import com.strangerhelp.app.ui.screens.profile.ReferEarnScreen
+import com.strangerhelp.app.ui.screens.profile.KarmaWalletScreen
+
+import com.strangerhelp.app.ui.screens.profile.VerificationScreen
+import com.strangerhelp.app.ui.screens.profile.AuthViewModel
+
 import com.strangerhelp.app.ui.screens.post.PostTaskScreen
 import com.strangerhelp.app.ui.screens.post.PostMeetScreen
 import com.strangerhelp.app.ui.screens.post.PostQuestionScreen
@@ -33,11 +49,11 @@ import com.strangerhelp.app.ui.screens.leaderboard.LeaderboardScreen
 import com.strangerhelp.app.ui.screens.ask.AskScreen
 import com.strangerhelp.app.ui.screens.pulse.PulseScreen
 import com.strangerhelp.app.ui.screens.notifications.NotificationsScreen
-import com.strangerhelp.app.ui.theme.Saffron
-import com.strangerhelp.app.ui.theme.OnSaffron
+import com.strangerhelp.app.ui.screens.path.PathSetupScreen
+import com.strangerhelp.app.ui.screens.path.PathActiveScreen
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector, val iconOutlined: ImageVector) {
-    object Feed : Screen("feed", "Feed", Icons.Filled.ViewStream, Icons.Outlined.ViewStream)
+    object Feed : Screen("feed", "Home", Icons.Filled.DynamicFeed, Icons.Outlined.DynamicFeed)
     object Tasks : Screen("tasks", "Tasks", Icons.Filled.Assignment, Icons.Outlined.Assignment)
     object Post : Screen("post", "Post", Icons.Filled.AddCircle, Icons.Outlined.AddCircleOutline)
     object Chat : Screen("chat", "Chat", Icons.Filled.Chat, Icons.Outlined.Chat)
@@ -49,12 +65,12 @@ val bottomNavItems = listOf(Screen.Feed, Screen.Tasks, Screen.Post, Screen.Chat,
 @Composable
 fun AppNavigation(user: User, onLogout: () -> Unit) {
     val navController = rememberNavController()
+    val chatViewModel: ChatViewModel = viewModel()
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val showBottomBar = currentRoute in bottomNavItems.map { it.route }
     val snackbarHostState = remember { SnackbarHostState() }
     
     var unreadCount by remember { mutableIntStateOf(0) }
-
     LaunchedEffect(Unit) {
         while(true) {
             try {
@@ -68,76 +84,159 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
     }
 
     androidx.compose.runtime.CompositionLocalProvider(com.strangerhelp.app.ui.components.LocalSnackbarHostState provides snackbarHostState) {
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        bottomBar = {
-            if (showBottomBar) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-                    bottomNavItems.forEach { screen ->
-                        val selected = currentRoute == screen.route
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                if (currentRoute != screen.route) {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
+        Scaffold(
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            bottomBar = {
+                if (showBottomBar) {
+                    Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFF6F6F6))) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(72.dp)
+                                .padding(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceAround,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            bottomNavItems.forEach { screen ->
+                                val selected = currentRoute == screen.route
+                                CustomBottomNavItem(
+                                    screen = screen,
+                                    selected = selected,
+                                    unreadCount = if (screen == Screen.Chat) unreadCount else 0,
+                                    onClick = {
+                                        if (currentRoute != screen.route) {
+                                            navController.navigate(screen.route) {
+                                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
                                     }
-                                }
-                            },
-                            icon = {
-                                 if (screen == Screen.Chat && unreadCount > 0) {
-                                    BadgedBox(badge = { Badge { Text(unreadCount.toString()) } }) {
-                                        Icon(if (selected) screen.icon else screen.iconOutlined, screen.label)
-                                    }
-                                } else {
-                                    Icon(if (selected) screen.icon else screen.iconOutlined, screen.label)
-                                }
-                            },
-                            label = { Text(screen.label, style = MaterialTheme.typography.labelSmall) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = OnSaffron,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                indicatorColor = Saffron,
-                            )
-                        )
+                                )
+                            }
+                        }
                     }
                 }
             }
-        }
-    ) { padding ->
-        NavHost(navController, startDestination = Screen.Feed.route, Modifier.padding(padding)) {
-            composable(Screen.Feed.route) { FeedScreen(navController, user) }
-            composable(Screen.Tasks.route) { TasksScreen(navController) }
-            composable(Screen.Post.route) { PostTaskScreen(navController) }
-            composable(Screen.Chat.route) { ChatListScreen(navController, user) }
-            composable(Screen.Profile.route) { ProfileScreen(navController, onLogout = onLogout) }
-            
-            composable("meets") { MeetsScreen(navController) }
-            composable("wallet") { WalletScreen(navController) }
-            composable("leaderboard") { LeaderboardScreen(navController) }
-            composable("ask") { AskScreen(navController) }
-            composable("pulse") { PulseScreen(navController) }
-            composable("notifications") { NotificationsScreen(navController) }
-            composable("postMeet") { PostMeetScreen(navController) }
-            composable("postQuestion") { PostQuestionScreen(navController) }
-            composable("edit_profile") { EditProfileScreen(navController, user) }
-            
-            composable(
-                "task/{taskId}",
-                arguments = listOf(navArgument("taskId") { type = NavType.StringType })
-            ) { entry ->
-                TaskDetailScreen(navController, user, entry.arguments?.getString("taskId") ?: "")
-            }
-            
-            composable(
-                "chat/{convId}",
-                arguments = listOf(navArgument("convId") { type = NavType.StringType })
-            ) { entry ->
-                ChatDetailScreen(navController, user, entry.arguments?.getString("convId") ?: "")
+        ) { padding ->
+            NavHost(navController, startDestination = Screen.Feed.route, Modifier.padding(padding)) {
+                composable(Screen.Feed.route) { FeedScreen(navController, user) }
+                composable(Screen.Tasks.route) { TasksScreen(navController) }
+                composable(Screen.Post.route) { PostTaskScreen(navController) }
+                composable(Screen.Chat.route) { ChatListScreen(viewModel = chatViewModel, navController = navController) }
+                composable("support") { com.strangerhelp.app.ui.screens.chat.SupportChatScreen(navController = navController) }
+                composable(Screen.Profile.route) { ProfileScreen(navController, onLogout = onLogout) }
+                
+                composable("meets") { MeetsScreen(navController) }
+                composable("wallet") { WalletScreen(navController) }
+                composable("leaderboard") { LeaderboardScreen(navController) }
+                composable("ask") { AskScreen(navController) }
+                composable("pulse") { PulseScreen(navController) }
+                composable("notifications") { NotificationsScreen(navController) }
+
+                composable("path_setup") { PathSetupScreen(navController) }
+                composable("path_active") { PathActiveScreen(navController) }
+
+                composable("postMeet") { PostMeetScreen(navController) }
+                composable("postQuestion") { PostQuestionScreen(navController) }
+                composable("edit_profile") { EditProfileScreen(navController, user) }
+
+                composable("verify_id") {
+                    VerifyIdScreen(navController = navController)
+                }
+                
+                composable("refer_earn") {
+                    ReferEarnScreen(navController = navController)
+                }
+                
+                composable("karma_wallet") {
+                    KarmaWalletScreen(navController = navController)
+                }
+
+                composable(
+                    "verification?token={token}",
+                    arguments = listOf(navArgument("token") { type = NavType.StringType; nullable = true; defaultValue = "" }),
+                    deepLinks = listOf(navDeepLink { uriPattern = "https://strangerhelp.com/api/auth/verify-email?token={token}" })
+                ) { backStackEntry ->
+                    val token = backStackEntry.arguments?.getString("token") ?: ""
+                    VerificationScreen(
+                        token = token,
+                        navController = navController
+                    )
+                }
+                
+                composable(
+                    "task/{taskId}",
+                    arguments = listOf(navArgument("taskId") { type = NavType.StringType })
+                ) { entry ->
+                    TaskDetailScreen(navController, user, entry.arguments?.getString("taskId") ?: "")
+                }
+                
+                composable(
+                    "chat/{convId}",
+                    arguments = listOf(navArgument("convId") { type = NavType.StringType })
+                ) { entry ->
+                    ChatDetailScreen(conversationId = entry.arguments?.getString("convId") ?: "", viewModel = chatViewModel, navController = navController)
+                }
             }
         }
     }
+}
+
+@Composable
+fun CustomBottomNavItem(
+    screen: Screen,
+    selected: Boolean,
+    unreadCount: Int,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    
+    val bgColor = if (selected) Color(0xFFFFB340) else Color.Transparent
+    val contentColor = if (selected) Color(0xFF1F1F1F) else Color(0xFF333333)
+    val fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
+
+    Box(
+        modifier = Modifier
+            .width(64.dp)
+            .height(64.dp)
+            .clip(CircleShape)
+            .background(bgColor)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null, // Or use a custom ripple if desired
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (unreadCount > 0) {
+                BadgedBox(badge = { Badge { Text(unreadCount.toString()) } }) {
+                    Icon(
+                        imageVector = if (selected) screen.icon else screen.iconOutlined,
+                        contentDescription = screen.label,
+                        tint = contentColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            } else {
+                Icon(
+                    imageVector = if (selected) screen.icon else screen.iconOutlined,
+                    contentDescription = screen.label,
+                    tint = contentColor,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = screen.label,
+                fontSize = 12.sp,
+                fontWeight = fontWeight,
+                color = contentColor
+            )
+        }
     }
 }

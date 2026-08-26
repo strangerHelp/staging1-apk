@@ -40,6 +40,10 @@
                     android:host="strangerhelp.com"
                     android:pathPrefix="/reset-password"
                     android:scheme="https" />
+                <data
+                    android:host="strangerhelp.com"
+                    android:pathPrefix="/api/auth/verify-email"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
         

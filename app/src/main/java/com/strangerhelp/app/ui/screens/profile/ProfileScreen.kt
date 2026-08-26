@@ -32,17 +32,32 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.strangerhelp.app.data.model.User
 import com.strangerhelp.app.ui.theme.*
+import com.strangerhelp.app.ui.components.EmailVerificationBanner
+import com.strangerhelp.app.ui.screens.profile.AuthViewModel
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     navController: NavController,
     onLogout: () -> Unit,
-    viewModel: ProfileViewModel = viewModel()
+    viewModel: ProfileViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel(),
+    verificationViewModel: VerificationViewModel = viewModel()
 ) {
     val user by viewModel.user.collectAsState()
     val stats by viewModel.stats.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+        val isLoading by viewModel.isLoading.collectAsState()
+    
+    val isSendingVerification by authViewModel.isSendingVerification.collectAsState()
+    val verificationMessage by authViewModel.verificationMessage.collectAsState()
+    val verificationError by authViewModel.verificationError.collectAsState()
+    
+    val verificationStatus by verificationViewModel.status.collectAsState()
+    
+    LaunchedEffect(Unit) {
+        verificationViewModel.loadStatus()
+    }
 
     LaunchedEffect(Unit) {
         // viewModel.loadData()
@@ -88,34 +103,13 @@ fun ProfileScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (user?.emailVerified == false) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFE0B2)),
-                    shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFB74D))
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.WarningAmber, contentDescription = null, tint = Color(0xFF5D4037))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Verify your email", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.Black)
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Verify your email to unlock all features and increase trust.",
-                            fontSize = 14.sp, color = Color.DarkGray
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = { viewModel.resendVerificationEmail() },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF795516), contentColor = Color.White),
-                            modifier = Modifier.align(Alignment.End),
-                            shape = RoundedCornerShape(24.dp)
-                        ) {
-                            Text("Verify", fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
+            if (user?.emailVerified == 0) {
+                EmailVerificationBanner(
+                    onResendClick = { authViewModel.resendVerificationEmail() },
+                    isSending = isSendingVerification,
+                    message = verificationMessage,
+                    error = verificationError
+                )
             }
 
             // Hero Card
@@ -162,7 +156,7 @@ fun ProfileScreen(
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    if (user?.emailVerified == true) {
+                    if (user?.emailVerified == 1) {
                         Text(
                             text = "EMAIL VERIFIED",
                             fontSize = 10.sp,
@@ -187,13 +181,23 @@ fun ProfileScreen(
                 }
             }
 
-            // Quick Actions
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                QuickActionCard(icon = Icons.Default.Badge, label = "Verify ID", onClick = { }, modifier = Modifier.weight(1f))
-                QuickActionCard(icon = Icons.Default.CardGiftcard, label = "Refer & Earn", onClick = { }, modifier = Modifier.weight(1f))
-                QuickActionCard(icon = Icons.Outlined.AccountBalanceWallet, label = "Karma Wallet", onClick = { }, modifier = Modifier.weight(1f))
-            }
 
+
+            // Quick Actions
+            QuickActionsRow(
+                onVerifyIdClick = {
+                    when (verificationStatus?.status) {
+                        "approved" -> navController.navigate("verify_id")
+                        "pending" -> navController.navigate("verify_id")
+                        else -> navController.navigate("verify_id")
+                    }
+                },
+                onReferClick = { navController.navigate("refer_earn") },
+                onKarmaClick = { navController.navigate("karma_wallet") }
+            )
+            
+            Spacer(Modifier.height(16.dp))
+            
             // Trust Stats
             TrustStatsCard(
                 rating = stats?.rating ?: 0.0,
@@ -214,23 +218,7 @@ fun ProfileScreen(
                 Column {
                     MenuItemRow(icon = Icons.Outlined.Person, label = "Edit Profile", onClick = { navController.navigate("edit_profile") }, showChevron = true)
                     Divider(color = Color(0xFFF0F0F0))
-                    MenuItemRow(
-                        icon = Icons.Outlined.VerifiedUser, 
-                        label = "Identity Verification", 
-                        onClick = { }, 
-                        showChevron = true,
-                        trailingContent = {
-                            if (user?.verified == 1) {
-                                Text(
-                                    "Verified", 
-                                    color = Color(0xFF00BFA5), 
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.background(Color(0xFF004D40), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-                    )
-                    Divider(color = Color(0xFFF0F0F0))
+
                     MenuItemRow(
                         icon = Icons.Outlined.Logout, 
                         label = "Logout", 
@@ -370,6 +358,71 @@ fun TrustStatsCard(
             )
             Spacer(Modifier.height(12.dp))
             Text("Score is based on successful tasks and verified information.", fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
+        }
+    }
+}
+
+@Composable
+fun QuickActionsRow(
+    onVerifyIdClick: () -> Unit,
+    onReferClick: () -> Unit,
+    onKarmaClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        QuickActionCardStr(
+            icon = "🪪",
+            label = "Verify ID",
+            onClick = onVerifyIdClick,
+            modifier = Modifier.weight(1f)
+        )
+        QuickActionCardStr(
+            icon = "🎁",
+            label = "Refer & Earn",
+            onClick = onReferClick,
+            modifier = Modifier.weight(1f)
+        )
+        QuickActionCardStr(
+            icon = "⭐",
+            label = "Karma Wallet",
+            onClick = onKarmaClick,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+fun QuickActionCardStr(
+    icon: String,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .height(72.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = SurfaceVariant
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(text = icon, fontSize = 24.sp)
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = Body,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

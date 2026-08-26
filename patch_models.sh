@@ -1,1 +1,0 @@
-sed -i 's/val createdAt: String = "",/val createdAt: String = "",\n    val trackingActive: Boolean = false,\n    val helperLat: Double? = null,\n    val helperLng: Double? = null,\n    val visibility: String = "public",\n    val inviteCode: String? = null,/' app/src/main/java/com/strangerhelp/app/data/model/Models.kt

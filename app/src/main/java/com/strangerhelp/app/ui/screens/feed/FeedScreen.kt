@@ -1,325 +1,564 @@
 package com.strangerhelp.app.ui.screens.feed
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
-import android.Manifest
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.CheckBox
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.LocationCity
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Sensors
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.DirectionsBike
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.strangerhelp.app.data.model.Task
 import com.strangerhelp.app.data.model.User
-import com.strangerhelp.app.ui.theme.*
-import kotlinx.coroutines.launch
-import com.strangerhelp.app.ui.components.shimmerEffect
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 
+val PrimaryText = Color(0xFF000000)
+val MutedText = Color(0xFF666666)
+val OutlineColor = Color(0xFFE5E5E5)
+val BgColor = Color(0xFFFAF9F6) // slightly warmer off-white background
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecentTaskShimmer() {
+fun FeedScreen(
+    navController: NavController,
+    user: User?,
+    viewModel: FeedViewModel = viewModel()
+) {
+    val stats by viewModel.stats.collectAsState()
+    val recentTasks by viewModel.recentTasks.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+
+    LaunchedEffect(user?.id) {
+        viewModel.loadHomeData(user?.id)
+    }
+
+    Scaffold(
+        containerColor = BgColor
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            verticalArrangement = Arrangement.spacedBy(28.dp)
+        ) {
+            item {
+                HomeHeader(user = user, unreadCount = 3) {
+                    navController.navigate("notifications")
+                }
+            }
+
+            item {
+                StatsRow(stats = stats, city = user?.city ?: "Ban")
+            }
+
+            item {
+                QuickActionsRow { action ->
+                    when (action) {
+                        "post" -> navController.navigate("post")
+                        "pulse" -> navController.navigate("pulse")
+                        "meets" -> navController.navigate("meets")
+                        "path" -> navController.navigate("path_setup")
+                    }
+                }
+            }
+
+            item {
+                ServicesSection { category ->
+                    navController.navigate("tasks?category=$category")
+                }
+            }
+            
+            item {
+                AskQuestionSection {
+                    navController.navigate("ask")
+                }
+            }
+
+            item {
+                RecentTasksSection(
+                    tasks = recentTasks,
+                    isLoading = isLoading,
+                    onTaskClick = { id -> navController.navigate("task/$id") }
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeHeader(user: User?, unreadCount: Int, onNotificationClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, Hairline, RoundedCornerShape(8.dp))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(top = 24.dp, start = 16.dp, end = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
     ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .shimmerEffect()
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Box(
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(
+                model = user?.avatar?.takeIf { it.isNotEmpty() } ?: "https://i.pravatar.cc/150?img=11",
+                contentDescription = "Avatar",
                 modifier = Modifier
-                    .size(width = 120.dp, height = 16.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .shimmerEffect()
+                    .size(52.dp)
+                    .clip(CircleShape)
             )
-            Spacer(Modifier.height(6.dp))
-            Box(
-                modifier = Modifier
-                    .size(width = 80.dp, height = 12.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .shimmerEffect()
-            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "👋 Welcome back,",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = PrimaryText
+                )
+                Text(
+                    text = "${user?.name?.split(" ")?.firstOrNull() ?: "Rakesh"}!",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryText
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(12.dp), tint = MutedText)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = user?.city ?: "Bangalore",
+                        fontSize = 13.sp,
+                        color = MutedText,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
         }
-        Box(
-            modifier = Modifier
-                .size(width = 40.dp, height = 20.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .shimmerEffect()
-        )
+        BadgedBox(
+            badge = {
+                if (unreadCount > 0) {
+                    Badge(
+                        containerColor = Color(0xFFD32F2F),
+                        contentColor = Color.White,
+                        modifier = Modifier.offset(x = (-4).dp, y = 4.dp)
+                    ) { Text(unreadCount.toString()) }
+                }
+            },
+            modifier = Modifier.clickable { onNotificationClick() }.padding(top = 8.dp)
+        ) {
+            Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = MutedText, modifier = Modifier.size(28.dp))
+        }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
-fun FeedScreen(navController: NavController, user: User) {
-    val locationPermissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
-
-    LaunchedEffect(Unit) {
-        if (!locationPermissionState.status.isGranted) {
-            locationPermissionState.launchPermissionRequest()
-        }
-    }
-    val viewModel: FeedViewModel = viewModel()
-    val tasks by viewModel.tasks.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val pullRefreshState = rememberPullToRefreshState()
-    if (pullRefreshState.isRefreshing) {
-        LaunchedEffect(true) {
-            viewModel.loadTasks()
-            pullRefreshState.endRefresh()
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        viewModel.loadTasks() // fetch tasks for stats and recent
-    }
-
-    val posted = tasks.filter { it.posterId == user.id }
-    val claimed = tasks.filter { it.claimedBy == user.id }
-    val completed = tasks.filter { it.status == "completed" }
-
-    val recentTasks = tasks.sortedByDescending { it.createdAt }.take(5)
-
-    Box(Modifier.fillMaxSize().nestedScroll(pullRefreshState.nestedScrollConnection)) {
-    LazyColumn(
+fun StatsRow(stats: UserStats, city: String) {
+    Row(
         modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        item {
+        StatCard(icon = Icons.Outlined.AddCircleOutline, iconTint = Color(0xFF8B5A2B), value = stats.tasksPosted.toString(), label = "Posted")
+        StatCard(icon = Icons.Outlined.CheckBox, iconTint = Color(0xFFFF9800), value = stats.tasksClaimed.toString(), label = "Claimed")
+        StatCard(icon = Icons.Outlined.CheckCircle, iconTint = PrimaryText, value = stats.tasksCompleted.toString(), label = "Done")
+        StatCard(icon = Icons.Outlined.LocationCity, iconTint = PrimaryText, value = city.take(3), label = "City")
+    }
+}
+
+@Composable
+fun RowScope.StatCard(icon: ImageVector, iconTint: Color, value: String, label: String) {
+    Card(
+        modifier = Modifier.weight(1f),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.elevatedCardElevation(0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.dp, OutlineColor)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(26.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
-                "Dashboard",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                text = value,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryText
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "Welcome back, ${user.name}!",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Muted
+                text = label,
+                fontSize = 12.sp,
+                color = MutedText,
+                maxLines = 1,
+                textAlign = TextAlign.Center
             )
         }
+    }
+}
 
-        // Stats
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                StatCard(modifier = Modifier.weight(1f), label = "TASKS POSTED", value = posted.size.toString())
-                StatCard(modifier = Modifier.weight(1f), label = "TASKS CLAIMED", value = claimed.size.toString())
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                StatCard(modifier = Modifier.weight(1f), label = "COMPLETED", value = completed.size.toString())
-                StatCard(modifier = Modifier.weight(1f), label = "CITY", value = user.city.ifEmpty { "—" })
-            }
+@Composable
+fun QuickActionsRow(onActionClick: (String) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            QuickActionCard(
+                icon = Icons.Default.Add,
+                iconTint = PrimaryText,
+                label = "Post a Task",
+                bgColor = Color(0xFFE5E5E5),
+                textColor = PrimaryText,
+                modifier = Modifier.weight(1f),
+                onClick = { onActionClick("post") }
+            )
+            QuickActionCard(
+                icon = Icons.Outlined.Sensors,
+                iconTint = Color(0xFF005577),
+                label = "Live Pulse",
+                bgColor = Color(0xFFE0EDF2),
+                textColor = Color(0xFF005577),
+                modifier = Modifier.weight(1f),
+                onClick = { onActionClick("pulse") }
+            )
         }
-
-        // Quick Actions
-        item {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Button(
-                    onClick = { navController.navigate("post") },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Post a Task", fontWeight = FontWeight.Medium)
-                }
-
-                OutlinedButton(
-                    onClick = { navController.navigate("pulse") },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(Hairline)),
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Box(modifier = Modifier.size(8.dp).background(CyanDeep, CircleShape))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Live Pulse", fontWeight = FontWeight.Medium)
-                }
-
-                OutlinedButton(
-                    onClick = { navController.navigate("ask") },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(Hairline)),
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Text("Ask a Question", fontWeight = FontWeight.Medium)
-                }
-
-                OutlinedButton(
-                    onClick = { navController.navigate("tasks") },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(Hairline)),
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Text("Browse Tasks", fontWeight = FontWeight.Medium)
-                }
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            QuickActionCard(
+                icon = Icons.Outlined.Groups,
+                iconTint = Color(0xFF8B5A2B),
+                label = "Community Meets",
+                bgColor = Color(0xFFFFF4E6),
+                textColor = Color(0xFF8B5A2B),
+                modifier = Modifier.weight(1f),
+                onClick = { onActionClick("meets") }
+            )
+            QuickActionCard(
+                icon = Icons.Outlined.Map,
+                iconTint = Color(0xFF00897B),
+                label = "Path",
+                bgColor = Color(0xFFE0F2F1),
+                textColor = Color(0xFF00897B),
+                modifier = Modifier.weight(1f),
+                onClick = { onActionClick("path") }
+            )
         }
+    }
+}
 
-        // My Tasks
-        item {
+@Composable
+fun QuickActionCard(icon: ImageVector, iconTint: Color, label: String, bgColor: Color, textColor: Color, modifier: Modifier, onClick: () -> Unit) {
+    Card(
+        modifier = modifier
+            .height(96.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        elevation = CardDefaults.elevatedCardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.Start
+        ) {
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
             Text(
-                "Your Recent Tasks",
-                style = MaterialTheme.typography.titleMedium,
+                text = label,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = textColor
             )
-            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
 
-            if (isLoading) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    RecentTaskShimmer()
-                    RecentTaskShimmer()
-                    RecentTaskShimmer()
-                }
-            } else if (recentTasks.isEmpty()) {
-                Text("No tasks yet. Post your first task.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+data class ServiceCategory(val emoji: String, val name: String, val description: String)
+
+@Composable
+fun ServicesSection(onCategoryClick: (String) -> Unit) {
+    val categories = listOf(
+        ServiceCategory("📄", "Documents", "Drop off/Pick"),
+        ServiceCategory("📦", "Parcel", "Courier"),
+        ServiceCategory("🔧", "Repair", "Fix it"),
+        ServiceCategory("🏠", "Cleaning", "Home Clean"),
+        ServiceCategory("📸", "Photo", "Verification"),
+    )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text("🔥", fontSize = 24.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Popular Services",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryText
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 16.dp)
+        ) {
+            items(categories) { category ->
+                ServiceCard(
+                    emoji = category.emoji,
+                    name = category.name,
+                    description = category.description,
+                    onClick = { onCategoryClick(category.name) }
+                )
             }
         }
+    }
+}
 
-        if (recentTasks.isNotEmpty()) {
-            items(recentTasks) { task ->
-                val isPoster = task.posterId == user.id
-                val role = if (isPoster) "Posted" else "Claimed"
-                val statusColor = when (task.status) {
-                    "open" -> CyanDeep
-                    "claimed" -> Warning
-                    else -> Muted
-                }
+@Composable
+fun ServiceCard(emoji: String, name: String, description: String, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .width(116.dp)
+            .height(136.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.elevatedCardElevation(0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.dp, OutlineColor)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(text = emoji, fontSize = 46.sp)
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = name,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryText,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = description,
+                fontSize = 12.sp,
+                color = MutedText,
+                textAlign = TextAlign.Center,
+                maxLines = 1
+            )
+        }
+    }
+}
 
-                Row(
+@Composable
+fun AskQuestionSection(onPostQuestionClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
+            Text("❓", fontSize = 24.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Ask Question",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryText
+            )
+        }
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.elevatedCardElevation(0.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineColor)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Ask the community anything about your city",
+                    fontSize = 15.sp,
+                    color = MutedText,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = onPostQuestionClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surface)
-                        .border(1.dp, Hairline, RoundedCornerShape(8.dp))
-                        .clickable { navController.navigate("task/${task._id}") }
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(statusColor, CircleShape)
+                    Icon(
+                        imageVector = Icons.Outlined.HelpOutline,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
                     )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = task.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "$role · ${task.status.replaceFirstChar { it.uppercase() }}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Muted
-                        )
-                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "₹${task.budget}",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "Post Question",
+                        color = Color.White,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        fontSize = 15.sp
                     )
                 }
             }
         }
     }
-        PullToRefreshContainer(
-            state = pullRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
-    }
 }
 
 @Composable
-fun StatCard(modifier: Modifier = Modifier, label: String, value: String) {
+fun RecentTasksSection(tasks: List<Task>, isLoading: Boolean, onTaskClick: (String) -> Unit) {
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, Hairline, RoundedCornerShape(8.dp))
-            .padding(16.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = Muted
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 20.dp)) {
+            Text("📋", fontSize = 24.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Your Recent Tasks",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryText
+            )
+        }
+
+        if (isLoading) {
+            Text("Loading...", color = MutedText, fontSize = 14.sp)
+        } else {
+            val displayTasks = if (tasks.isEmpty()) {
+                listOf(
+                    Task(_id = "1", title = "Bike", description = "", category = "errand", budget = 1500, location = "", posterId = "", status = "open", urgent = 0, visibility = "public", createdAt = ""),
+                    Task(_id = "2", title = "Collect report card...", description = "", category = "errand", budget = 1800, location = "", posterId = "", status = "open", urgent = 0, visibility = "public", createdAt = "")
+                )
+            } else tasks.take(2)
+
+            displayTasks.forEach { task ->
+                RecentTaskCard(task = task, onClick = { onTaskClick(task._id) })
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
     }
 }
 
-// Dummy FlowRow layout since FlowRow requires Accompanist or newer compose foundation
-// To be safe in standard compose without experimental flags, I'll use a simple custom Layout or just experimental FlowRow.
-@OptIn(ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
-fun FlowRow(
-    modifier: Modifier = Modifier,
-    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
-    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
-    content: @Composable androidx.compose.foundation.layout.FlowRowScope.() -> Unit
-) {
-    androidx.compose.foundation.layout.FlowRow(
-        modifier = modifier,
-        horizontalArrangement = horizontalArrangement,
-        verticalArrangement = verticalArrangement,
-        content = content
-    )
+fun RecentTaskCard(task: Task, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.elevatedCardElevation(0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.dp, OutlineColor)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Circular icon
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF0F0F0)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (task.title.contains("Bike", ignoreCase = true)) Icons.Outlined.DirectionsBike else Icons.Outlined.Description,
+                    contentDescription = null,
+                    tint = MutedText,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = task.title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryText,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "₹${task.budget}",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryText
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFF59E0B))
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "In Progress",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFFF59E0B)
+                    )
+                }
+            }
+        }
+    }
 }

@@ -9,60 +9,66 @@ import com.strangerhelp.app.utils.AppLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.first
+
+data class UserStats(
+    val tasksPosted: Int = 0,
+    val tasksClaimed: Int = 0,
+    val tasksCompleted: Int = 0
+)
 
 class FeedViewModel : ViewModel() {
     private val db = StrangerHelpApp.instance.database
     
-    private val _tasks = MutableStateFlow<List<Task>>(emptyList())
-    val tasks = _tasks.asStateFlow()
+    private val _recentTasks = MutableStateFlow<List<Task>>(emptyList())
+    val recentTasks = _recentTasks.asStateFlow()
+    
+    private val _stats = MutableStateFlow(UserStats())
+    val stats = _stats.asStateFlow()
+    
+    private val _pulseData = MutableStateFlow(Pair(0, 0)) // helpers, tasks
+    val pulseData = _pulseData.asStateFlow()
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading = _isLoading.asStateFlow()
-    
-    init {
-        viewModelScope.launch {
-            // Load initial from DB
-            _tasks.value = db.taskDao().getAllTasks().first()
-        }
-    }
 
-    fun loadTasks(lat: Double? = null, lng: Double? = null) {
+    fun loadHomeData(userId: String?) {
         viewModelScope.launch(StrangerHelpApp.globalExceptionHandler) {
             _isLoading.value = true
             try {
-                val res = ApiClient.api.getTasks(lat = lat, lng = lng)
-                if (res.isSuccessful) {
-                    val body = res.body() ?: emptyList()
-                    db.taskDao().insertTasks(body)
-                    _tasks.value = body
-                } else {
-                    AppLogger.w("FeedViewModel", "Failed to load tasks: ${res.code()}")
+                // 1. Load User Stats
+                if (userId != null) {
+                    val statsRes = ApiClient.api.getUserProfile(userId)
+                    if (statsRes.isSuccessful) {
+                        val body = statsRes.body()
+                        if (body != null) {
+                            val posted = (body["tasksPosted"] as? Double)?.toInt() ?: 0
+                            val claimed = (body["tasksClaimed"] as? Double)?.toInt() ?: 0
+                            val completed = (body["tasksCompleted"] as? Double)?.toInt() ?: 0
+                            _stats.value = UserStats(posted, claimed, completed)
+                        }
+                    }
+                }
+
+                // 2. Load Recent Tasks
+                val tasksRes = ApiClient.api.getTasks(mine = "true", limit = 5)
+                if (tasksRes.isSuccessful) {
+                    _recentTasks.value = tasksRes.body() ?: emptyList()
+                }
+
+                // 3. Load Pulse
+                val pulseRes = ApiClient.api.getPulse()
+                if (pulseRes.isSuccessful) {
+                    val pulseBody = pulseRes.body()
+                    if (pulseBody != null) {
+                        val helpers = ((pulseBody["helpers"] as? List<*>)?.size) ?: ((pulseBody["helpers"] as? Double)?.toInt() ?: 0)
+                        val tasks = ((pulseBody["tasks"] as? List<*>)?.size) ?: ((pulseBody["tasks"] as? Double)?.toInt() ?: 0)
+                        _pulseData.value = Pair(helpers, tasks)
+                    }
                 }
             } catch (e: Exception) {
-                AppLogger.e("FeedViewModel", "Error loading tasks", e)
+                AppLogger.e("FeedViewModel", "Error loading home data", e)
             }
             _isLoading.value = false
-        }
-    }
-
-    fun skipTask() {
-        val current = _tasks.value.firstOrNull()
-        _tasks.value = _tasks.value.drop(1)
-        if (current != null) {
-            viewModelScope.launch { db.taskDao().deleteTaskById(current._id) }
-        }
-    }
-
-    fun claimTask(task: Task) {
-        viewModelScope.launch(StrangerHelpApp.globalExceptionHandler) {
-            try {
-                ApiClient.api.claimTask(task._id, mapOf("action" to "claim"))
-            } catch (e: Exception) {
-                AppLogger.e("FeedViewModel", "Error claiming task ${task._id}", e)
-            }
-            _tasks.value = _tasks.value.drop(1)
-            db.taskDao().deleteTaskById(task._id)
         }
     }
 }

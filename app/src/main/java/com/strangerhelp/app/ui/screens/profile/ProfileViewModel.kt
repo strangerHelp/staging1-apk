@@ -56,7 +56,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun resendVerificationEmail() {
         viewModelScope.launch {
             try {
-                ApiClient.api.verifyEmail()
+                ApiClient.api.resendVerification()
                 // In a real app we could show a toast here
             } catch (e: Exception) {
                 e.printStackTrace()
