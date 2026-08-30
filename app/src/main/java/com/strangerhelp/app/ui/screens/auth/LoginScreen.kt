@@ -31,13 +31,30 @@ import com.strangerhelp.app.data.model.User
 import com.strangerhelp.app.ui.theme.*
 import kotlinx.coroutines.launch
 
+import android.app.Activity
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.gson.Gson
+import androidx.compose.ui.platform.LocalContext
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen(onLoginSuccess: (User) -> Unit, onForgotPasswordClick: () -> Unit = {}) {
+fun LoginScreen(onLoginSuccess: (User) -> Unit, onForgotPasswordClick: () -> Unit = {}, onGoogleLoginClick: () -> Unit = {}) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    
+    val oauthLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val userJson = result.data?.getStringExtra("userJson")
+            if (userJson != null) {
+                val user = Gson().fromJson(userJson, User::class.java)
+                onLoginSuccess(user)
+            }
+        }
+    }
     var isRegister by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
@@ -128,12 +145,12 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit, onForgotPasswordClick: () -> Uni
                     HorizontalDivider(
                         modifier = Modifier.weight(1f),
                         thickness = 2.dp,
-                        color = if (!isRegister) MaterialTheme.colorScheme.primary else Hairline
+                        color = if (!isRegister) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                     HorizontalDivider(
                         modifier = Modifier.weight(1f),
                         thickness = 2.dp,
-                        color = if (isRegister) MaterialTheme.colorScheme.primary else Hairline
+                        color = if (isRegister) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                 }
                 
@@ -158,8 +175,7 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit, onForgotPasswordClick: () -> Uni
                             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Hairline
-                        )
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline)
                     )
                     Spacer(Modifier.height(16.dp))
                 }
@@ -175,8 +191,7 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit, onForgotPasswordClick: () -> Uni
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Hairline
-                    )
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline)
                 )
                 
                 Spacer(Modifier.height(16.dp))
@@ -199,8 +214,7 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit, onForgotPasswordClick: () -> Uni
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Hairline
-                    )
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline)
                 )
                 
                 if (isRegister) {
@@ -216,8 +230,7 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit, onForgotPasswordClick: () -> Uni
                             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Hairline
-                        )
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline)
                     )
                 }
                 
@@ -275,22 +288,22 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit, onForgotPasswordClick: () -> Uni
                 Spacer(Modifier.height(32.dp))
                 
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    HorizontalDivider(Modifier.weight(1f), color = Hairline)
+                    HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outline)
                     Text("OR CONTINUE WITH", Modifier.padding(horizontal = 16.dp), color = Muted, style = MaterialTheme.typography.labelSmall, fontSize = 10.sp, letterSpacing = 1.sp)
-                    HorizontalDivider(Modifier.weight(1f), color = Hairline)
+                    HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outline)
                 }
                 
                 Spacer(Modifier.height(24.dp))
                 
                 OutlinedButton(
                     onClick = {
-                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://strangerhelp.com/api/auth/google"))
-                        context.startActivity(intent)
-                    },
+                    val intent = Intent(context, OAuthWebViewActivity::class.java)
+                    oauthLauncher.launch(intent)
+                },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(26.dp),
                     colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Hairline)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(id = com.strangerhelp.app.R.drawable.ic_google),

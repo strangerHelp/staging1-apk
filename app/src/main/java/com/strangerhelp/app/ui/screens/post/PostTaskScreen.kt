@@ -1,5 +1,17 @@
 package com.strangerhelp.app.ui.screens.post
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
+
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Info
+
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,7 +30,6 @@ import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.strangerhelp.app.ui.components.LocationPicker
-import com.strangerhelp.app.ui.theme.Hairline
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +45,17 @@ fun PostTaskScreen(navController: NavController) {
     var isUrgent by remember { mutableStateOf(false) }
     var isPosting by remember { mutableStateOf(false) }
     var isPrivate by remember { mutableStateOf(false) }
+    
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
+    val timePickerState = rememberTimePickerState()
+    var selectedFileUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        selectedFileUris = uris
+    }
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -48,6 +70,19 @@ fun PostTaskScreen(navController: NavController) {
                 val l = location.toRequestBody(mediaType)
                 val u = (if (isUrgent) "1" else "0").toRequestBody(mediaType)
                 val v = (if (isPrivate) "private" else "public").toRequestBody(mediaType)
+                val dl = deadline.toRequestBody(mediaType)
+                
+                val filesParts = selectedFileUris.mapNotNull { uri ->
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val bytes = inputStream?.readBytes()
+                    inputStream?.close()
+                    if (bytes != null) {
+                        val requestFile = bytes.toRequestBody("application/octet-stream".toMediaTypeOrNull())
+                        okhttp3.MultipartBody.Part.createFormData("files", "attachment", requestFile)
+                    } else {
+                        null
+                    }
+                }
                 
                 val res = com.strangerhelp.app.data.api.ApiClient.api.postTask(
                     title = t,
@@ -55,8 +90,10 @@ fun PostTaskScreen(navController: NavController) {
                     category = c,
                     budget = b,
                     location = l,
+                    deadline = dl,
                     urgent = u,
-                    visibility = v
+                    visibility = v,
+                    files = filesParts.ifEmpty { null }
                 )
                 
                 if (res.isSuccessful) {
@@ -97,6 +134,7 @@ fun PostTaskScreen(navController: NavController) {
             placeholder = { Text("e.g., Submit documents at RTO") },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
+            
             singleLine = true,
         )
         
@@ -107,7 +145,7 @@ fun PostTaskScreen(navController: NavController) {
             label = { Text("Description") },
             placeholder = { Text("Provide details...") },
             modifier = Modifier.fillMaxWidth().height(100.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(12.dp)
         )
         
         Spacer(Modifier.height(12.dp))
@@ -121,6 +159,7 @@ fun PostTaskScreen(navController: NavController) {
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                 modifier = Modifier.fillMaxWidth().menuAnchor(),
                 shape = RoundedCornerShape(12.dp),
+            
             )
             ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 categories.forEach {
@@ -136,6 +175,7 @@ fun PostTaskScreen(navController: NavController) {
                 label = { Text("Number of Helpers needed") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
+            
                 singleLine = true,
             )
             Spacer(Modifier.height(12.dp))
@@ -150,12 +190,60 @@ fun PostTaskScreen(navController: NavController) {
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(deadlineExpanded) },
                 modifier = Modifier.fillMaxWidth().menuAnchor(),
                 shape = RoundedCornerShape(12.dp),
+            
             )
             ExposedDropdownMenu(expanded = deadlineExpanded, onDismissRequest = { deadlineExpanded = false }) {
                 deadlines.forEach {
-                    DropdownMenuItem(text = { Text(it) }, onClick = { deadline = it; deadlineExpanded = false })
+                    DropdownMenuItem(text = { Text(it) }, onClick = { 
+                        if (it == "Custom") {
+                            showDatePicker = true
+                        } else {
+                            deadline = it
+                        }
+                        deadlineExpanded = false 
+                    })
                 }
             }
+        }
+        
+        if (showDatePicker) {
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showDatePicker = false
+                        showTimePicker = true
+                    }) { Text("Next") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
+
+        if (showTimePicker) {
+            AlertDialog(
+                onDismissRequest = { showTimePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showTimePicker = false
+                        val cal = Calendar.getInstance()
+                        datePickerState.selectedDateMillis?.let { cal.timeInMillis = it }
+                        cal.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                        cal.set(Calendar.MINUTE, timePickerState.minute)
+                        val format = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
+                        deadline = format.format(cal.time)
+                    }) { Text("OK") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+                },
+                text = {
+                    TimePicker(state = timePickerState)
+                }
+            )
         }
         
         Spacer(Modifier.height(12.dp))
@@ -165,6 +253,7 @@ fun PostTaskScreen(navController: NavController) {
             label = { Text("Budget (₹)") },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
+            
             singleLine = true,
         )
         
@@ -179,6 +268,14 @@ fun PostTaskScreen(navController: NavController) {
         
         Spacer(Modifier.height(16.dp))
         
+        val darkSwitchColors = SwitchDefaults.colors(
+            uncheckedTrackColor = MaterialTheme.colorScheme.surface,
+            uncheckedBorderColor = MaterialTheme.colorScheme.onSurface,
+            uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
+            checkedBorderColor = MaterialTheme.colorScheme.primary,
+            checkedThumbColor = MaterialTheme.colorScheme.onPrimary
+        )
+
         Card(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = if (isUrgent) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant)
@@ -188,7 +285,7 @@ fun PostTaskScreen(navController: NavController) {
                     Text("⚡ Urgent", fontWeight = FontWeight.SemiBold)
                     Text("Helpers will prioritize this", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Switch(checked = isUrgent, onCheckedChange = { isUrgent = it })
+                Switch(checked = isUrgent, onCheckedChange = { isUrgent = it }, colors = darkSwitchColors)
             }
         }
         
@@ -203,11 +300,11 @@ fun PostTaskScreen(navController: NavController) {
                     Text("🕵️ Anonymous Posting", fontWeight = FontWeight.SemiBold)
                     Text("Hide your name on this task", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Switch(checked = isAnonymous, onCheckedChange = { isAnonymous = it })
+                Switch(checked = isAnonymous, onCheckedChange = { isAnonymous = it }, colors = darkSwitchColors)
             }
+        }
 
         Spacer(Modifier.height(16.dp))
-
 
         Card(
             shape = RoundedCornerShape(12.dp),
@@ -218,23 +315,22 @@ fun PostTaskScreen(navController: NavController) {
                     Text("🔒 Private Task", fontWeight = FontWeight.SemiBold)
                     Text("Only visible via invite link", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Switch(checked = isPrivate, onCheckedChange = { isPrivate = it })
+                Switch(checked = isPrivate, onCheckedChange = { isPrivate = it }, colors = darkSwitchColors)
             }
-        }
         }
         
         Spacer(Modifier.height(16.dp))
 
         OutlinedButton(
-            onClick = { /* TODO: Implement file picker */ },
+            onClick = { filePickerLauncher.launch("*/*") },
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(12.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Hairline),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
         ) {
             Icon(Icons.Filled.AttachFile, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Add Attachments (Photos, Docs)")
+            Text(if (selectedFileUris.isNotEmpty()) "${selectedFileUris.size} Attachment(s) Added" else "Add Attachments (Photos, Docs)")
         }
         
         Spacer(Modifier.height(12.dp))
@@ -243,7 +339,7 @@ fun PostTaskScreen(navController: NavController) {
             onClick = { /* TODO: Implement voice recording */ },
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(12.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Hairline),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
         ) {
             Icon(Icons.Filled.Mic, null, modifier = Modifier.size(18.dp))
@@ -252,6 +348,23 @@ fun PostTaskScreen(navController: NavController) {
         }
         
         Spacer(Modifier.height(24.dp))
+        
+
+        // ⭐ P2P Payment Notice
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFB300)),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Info, contentDescription = "Info", tint = Color(0xFFFF8F00), modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("You will pay the helper directly via UPI after task completion. StrangerHelp does not hold or process payments.", fontSize = 12.sp, color = Color(0xFFE65100), lineHeight = 16.sp)
+            }
+        }
+        
+        Spacer(Modifier.height(16.dp))
         
         Button(
             onClick = { isPosting = true },

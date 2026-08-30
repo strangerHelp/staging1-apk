@@ -1,5 +1,6 @@
 package com.strangerhelp.app.ui.screens.feed
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -72,6 +73,34 @@ fun FeedScreen(
             item {
                 HomeHeader(user = user, unreadCount = 3) {
                     navController.navigate("notifications")
+                }
+            }
+            
+            item {
+                // Search Bar to navigate to Tasks feed for filtering
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp)
+                        .clickable { navController.navigate("tasks") }
+                ) {
+                    OutlinedTextField(
+                        value = "",
+                        onValueChange = {},
+                        placeholder = { Text("Search tasks by keyword or category...", color = MutedText, fontSize = 14.sp) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = MutedText) },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        enabled = false, // clicking it navigates to tasks tab
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledBorderColor = OutlineColor,
+                            disabledContainerColor = Color.White,
+                            disabledTextColor = PrimaryText,
+                            disabledPlaceholderColor = MutedText,
+                            disabledLeadingIconColor = MutedText
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
                 }
             }
 
@@ -197,11 +226,11 @@ fun StatsRow(stats: UserStats, city: String) {
 @Composable
 fun RowScope.StatCard(icon: ImageVector, iconTint: Color, value: String, label: String) {
     Card(
-        modifier = Modifier.weight(1f),
+        modifier = Modifier.animateContentSize().weight(1f),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.elevatedCardElevation(0.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, OutlineColor)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(
             modifier = Modifier
@@ -352,14 +381,14 @@ fun ServicesSection(onCategoryClick: (String) -> Unit) {
 @Composable
 fun ServiceCard(emoji: String, name: String, description: String, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
+        modifier = Modifier.animateContentSize()
             .width(116.dp)
             .height(136.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.elevatedCardElevation(0.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, OutlineColor)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(
             modifier = Modifier
@@ -408,11 +437,11 @@ fun AskQuestionSection(onPostQuestionClick: () -> Unit) {
         }
         
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.animateContentSize().fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.elevatedCardElevation(0.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineColor)
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         ) {
             Column(
                 modifier = Modifier
@@ -492,13 +521,13 @@ fun RecentTasksSection(tasks: List<Task>, isLoading: Boolean, onTaskClick: (Stri
 @Composable
 fun RecentTaskCard(task: Task, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
+        modifier = Modifier.animateContentSize()
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.elevatedCardElevation(0.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, OutlineColor)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Row(
             modifier = Modifier

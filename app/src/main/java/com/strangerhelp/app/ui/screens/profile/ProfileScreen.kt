@@ -21,6 +21,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.scale
+
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +39,17 @@ import com.strangerhelp.app.data.model.User
 import com.strangerhelp.app.ui.theme.*
 import com.strangerhelp.app.ui.components.EmailVerificationBanner
 import com.strangerhelp.app.ui.screens.profile.AuthViewModel
+
+import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
+import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.compose.chart.column.columnChart
+import com.patrykandpatrick.vico.compose.chart.line.lineChart
+import com.patrykandpatrick.vico.compose.component.lineComponent
+import com.patrykandpatrick.vico.core.axis.AxisPosition
+import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
+import com.patrykandpatrick.vico.core.entry.entryModelOf
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,7 +133,7 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0))
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(24.dp),
@@ -198,6 +214,12 @@ fun ProfileScreen(
             
             Spacer(Modifier.height(16.dp))
             
+            // Karma Rank Progress (Level-Up Animation)
+            val computedKarmaPoints = (stats?.tasksCompleted ?: 0) * 125 + 230 // Mock formula to show some progress
+            KarmaRankCard(karmaPoints = computedKarmaPoints)
+            
+            Spacer(Modifier.height(24.dp))
+            
             // Trust Stats
             TrustStatsCard(
                 rating = stats?.rating ?: 0.0,
@@ -208,12 +230,55 @@ fun ProfileScreen(
                 verified = user?.verified == 1
             )
 
+            Spacer(Modifier.height(24.dp))
+            ActivityLogCard()
+            Spacer(Modifier.height(24.dp))
+            // ⭐ Legal Section
+            Text(
+                text = "Legal",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Muted,
+                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+            )
+            LegalMenuItem(
+                icon = "📜",
+                title = "Terms of Service",
+                subtitle = "Includes P2P payment terms",
+                onClick = { navController.navigate("webview?url=${java.net.URLEncoder.encode("https://strangerhelp.com/terms", "UTF-8")}") }
+            )
+            LegalMenuItem(
+                icon = "🔒",
+                title = "Privacy Policy",
+                subtitle = "We do not collect payment data",
+                onClick = { navController.navigate("webview?url=${java.net.URLEncoder.encode("https://strangerhelp.com/privacy", "UTF-8")}") }
+            )
+            LegalMenuItem(
+                icon = "⚠️",
+                title = "Disclaimer",
+                subtitle = "P2P payments — platform not liable",
+                onClick = { navController.navigate("disclaimer") }
+            )
+            LegalMenuItem(
+                icon = "🍪",
+                title = "Cookie Policy",
+                subtitle = "",
+                onClick = { navController.navigate("cookie_policy") }
+            )
+            LegalMenuItem(
+                icon = "📋",
+                title = "Community Guidelines",
+                subtitle = "",
+                onClick = { navController.navigate("community_guidelines") }
+            )
+            
+            Spacer(Modifier.height(24.dp))
             // Menu List
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0))
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column {
                     MenuItemRow(icon = Icons.Outlined.Person, label = "Edit Profile", onClick = { navController.navigate("edit_profile") }, showChevron = true)
@@ -240,7 +305,7 @@ fun QuickActionCard(icon: ImageVector, label: String, onClick: () -> Unit, modif
         modifier = modifier.height(84.dp).clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0))
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -301,6 +366,7 @@ fun TrustStatsCard(
     completionRate: Int,
     trustScore: Int,
     verified: Boolean
+
 ) {
     val trustPercent = if (trustScore > 0) trustScore else calculateTrustPercent(completionRate, verified, totalReviews)
     
@@ -308,7 +374,7 @@ fun TrustStatsCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0))
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -384,8 +450,8 @@ fun QuickActionsRow(
             onClick = onReferClick,
             modifier = Modifier.weight(1f)
         )
-        QuickActionCardStr(
-            icon = "⭐",
+        QuickActionCardIcon(
+            icon = Icons.Outlined.AccountBalanceWallet,
             label = "Karma Wallet",
             onClick = onKarmaClick,
             modifier = Modifier.weight(1f)
@@ -406,7 +472,7 @@ fun QuickActionCardStr(
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = SurfaceVariant
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
     ) {
@@ -420,8 +486,296 @@ fun QuickActionCardStr(
                 text = label,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
-                color = Body,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+fun LegalMenuItem(
+    icon: String,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = icon, fontSize = 24.sp)
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                if (subtitle.isNotEmpty()) {
+                    Text(
+                        text = subtitle,
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = Color.Gray
+            )
+        }
+    }
+}
+
+
+
+@Composable
+fun QuickActionCardIcon(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .height(72.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+
+@Composable
+fun ActivityLogCard(modifier: Modifier = Modifier) {
+    var selectedTab by remember { mutableStateOf(0) }
+    
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Activity Log", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+            
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.White,
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Tasks Completed") }, selectedContentColor = MaterialTheme.colorScheme.primary, unselectedContentColor = Color.Gray)
+                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Karma Earned") }, selectedContentColor = MaterialTheme.colorScheme.primary, unselectedContentColor = Color.Gray)
+            }
+            
+            Spacer(Modifier.height(24.dp))
+            
+            if (selectedTab == 0) {
+                val taskData = entryModelOf(2f, 5f, 4f, 8f, 6f, 10f)
+                val labels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun")
+                val bottomAxisFormatter = AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
+                    labels.getOrNull(value.toInt()) ?: ""
+                }
+                
+                Chart(
+                    chart = columnChart(
+                        columns = listOf(lineComponent(color = Color(0xFF00BFA5), thickness = 16.dp, shape = com.patrykandpatrick.vico.core.component.shape.Shapes.roundedCornerShape(topRightPercent = 50, topLeftPercent = 50)))
+                    ),
+                    model = taskData,
+                    startAxis = rememberStartAxis(),
+                    bottomAxis = rememberBottomAxis(valueFormatter = bottomAxisFormatter),
+                    modifier = Modifier.fillMaxWidth().height(160.dp)
+                )
+            } else {
+                val karmaData = entryModelOf(15f, 45f, 30f, 80f, 60f, 120f)
+                val labels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun")
+                val bottomAxisFormatter = AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
+                    labels.getOrNull(value.toInt()) ?: ""
+                }
+                
+                Chart(
+                    chart = lineChart(
+                        lines = listOf(
+                            com.patrykandpatrick.vico.compose.chart.line.lineSpec(
+                                lineColor = Color(0xFFFFB300),
+                                lineThickness = 3.dp,
+                                lineBackgroundShader = null
+                            )
+                        )
+                    ),
+                    model = karmaData,
+                    startAxis = rememberStartAxis(),
+                    bottomAxis = rememberBottomAxis(valueFormatter = bottomAxisFormatter),
+                    modifier = Modifier.fillMaxWidth().height(160.dp)
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
+fun KarmaRankCard(karmaPoints: Int, modifier: Modifier = Modifier) {
+    val ranks = listOf(
+        0 to "Novice Helper",
+        500 to "Bronze Helper",
+        1500 to "Silver Helper",
+        3000 to "Gold Helper",
+        5000 to "Platinum Helper"
+    )
+    
+    var currentRank = ranks[0].second
+    var nextRank = ranks[1].second
+    var minPoints = ranks[0].first
+    var maxPoints = ranks[1].first
+    
+    for (i in 0 until ranks.size - 1) {
+        if (karmaPoints >= ranks[i].first && karmaPoints < ranks[i+1].first) {
+            currentRank = ranks[i].second
+            nextRank = ranks[i+1].second
+            minPoints = ranks[i].first
+            maxPoints = ranks[i+1].first
+            break
+        }
+    }
+    
+    if (karmaPoints >= ranks.last().first) {
+        currentRank = ranks.last().second
+        nextRank = "Max Rank"
+        minPoints = ranks.last().first
+        maxPoints = ranks.last().first + 1000
+    }
+    
+    val targetProgress = ((karmaPoints - minPoints).toFloat() / (maxPoints - minPoints).toFloat()).coerceIn(0f, 1f)
+    
+    var animationPlayed by remember { mutableStateOf(false) }
+    val progress by animateFloatAsState(
+        targetValue = if (animationPlayed) targetProgress else 0f,
+        animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing)
+    )
+    
+    val infiniteTransition = rememberInfiniteTransition()
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+    LaunchedEffect(Unit) {
+        animationPlayed = true
+    }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), // Dark premium background
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "Karma Rank",
+                        color = Color(0xFF94A3B8),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        currentRank,
+                        color = Color(0xFFFBBF24), // Gold color
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(Color(0xFF334155), CircleShape)
+                        .scale(pulseScale)
+                ) {
+                    Text("🌟", fontSize = 24.sp)
+                }
+            }
+            
+            Spacer(Modifier.height(24.dp))
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("$karmaPoints KP", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("$maxPoints KP", color = Color(0xFF94A3B8), fontSize = 14.sp)
+            }
+            
+            Spacer(Modifier.height(8.dp))
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .background(Color(0xFF334155), RoundedCornerShape(4.dp))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress)
+                        .height(8.dp)
+                        .background(
+                            color = Color(0xFFFBBF24),
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                )
+            }
+            
+            Spacer(Modifier.height(16.dp))
+            
+            Text(
+                "Earn ${maxPoints - karmaPoints} more KP to reach $nextRank!",
+                color = Color(0xFF94A3B8),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
             )
         }
     }

@@ -141,7 +141,7 @@ fun ResetPasswordScreen(navController: NavController, token: String) {
             
             Surface(
                 color = Color.Transparent,
-                border = BorderStroke(1.dp, Color(0xFFE5E5E5)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -196,7 +196,7 @@ fun ResetPasswordScreen(navController: NavController, token: String) {
                             focusedContainerColor = Color(0xFFF7F7F7),
                             unfocusedContainerColor = Color(0xFFF7F7F7),
                             focusedBorderColor = Primary,
-                            unfocusedBorderColor = Color(0xFFCCCCCC)
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         )
                     )
                     
@@ -228,7 +228,7 @@ fun ResetPasswordScreen(navController: NavController, token: String) {
                             focusedContainerColor = Color(0xFFF7F7F7),
                             unfocusedContainerColor = Color(0xFFF7F7F7),
                             focusedBorderColor = if (passwordsDoNotMatch) Color(0xFFB3261E) else Primary,
-                            unfocusedBorderColor = if (passwordsDoNotMatch) Color(0xFFB3261E) else Color(0xFFCCCCCC)
+                            unfocusedBorderColor = if (passwordsDoNotMatch) Color(0xFFB3261E) else MaterialTheme.colorScheme.outline
                         )
                     )
                     

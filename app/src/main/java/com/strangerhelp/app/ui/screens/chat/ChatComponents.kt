@@ -80,7 +80,7 @@ fun MessageBubble(
                 bottomStart = if (isOwn) 12.dp else 4.dp,
                 bottomEnd = if (isOwn) 4.dp else 12.dp
             ),
-            border = if (!isOwn) BorderStroke(1.dp, Hairline) else null,
+            border = if (!isOwn) BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null,
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
@@ -157,7 +157,7 @@ fun QuickReplies(onSelect: (String) -> Unit) {
                 onClick = { onSelect(reply) },
                 shape = RoundedCornerShape(20.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                border = if (isCompleted) null else BorderStroke(1.dp, Hairline),
+                border = if (isCompleted) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isCompleted) Saffron else Color.White,
                     contentColor = if (isCompleted) Color.Black else Color.Black
@@ -235,8 +235,8 @@ fun ChatInputBar(
                         .heightIn(min = 48.dp, max = 120.dp),
                     shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Hairline,
-                        unfocusedBorderColor = Hairline,
+                        focusedBorderColor = MaterialTheme.colorScheme.outline,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White
                     ),
@@ -260,7 +260,7 @@ fun ChatInputBar(
                     modifier = Modifier
                         .size(48.dp)
                         .background(
-                            if (text.isNotBlank() && !isOverLimit && !isSending) Color.Black else Hairline,
+                            if (text.isNotBlank() && !isOverLimit && !isSending) Color.Black else MaterialTheme.colorScheme.outline,
                             CircleShape
                         )
                 ) {

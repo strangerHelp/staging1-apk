@@ -93,7 +93,7 @@ fun WalletScreen(navController: NavController) {
             
             items(transactions) { tx ->
                 TransactionItem(tx)
-                HorizontalDivider(color = Hairline, modifier = Modifier.padding(start = 56.dp, top = 4.dp, bottom = 4.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(start = 56.dp, top = 4.dp, bottom = 4.dp))
             }
         }
     }

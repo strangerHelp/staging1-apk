@@ -1,4 +1,6 @@
 package com.strangerhelp.app.navigation
+import com.strangerhelp.app.ui.screens.WebViewScreen
+
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,6 +29,8 @@ import com.strangerhelp.app.data.model.User
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.strangerhelp.app.ui.screens.chat.ChatViewModel
 import com.strangerhelp.app.ui.screens.chat.ChatDetailScreen
+import com.strangerhelp.app.ui.screens.legal.LegalScreen
+import com.strangerhelp.app.ui.screens.legal.LegalTexts
 import com.strangerhelp.app.ui.screens.chat.ChatListScreen
 import com.strangerhelp.app.ui.screens.feed.FeedScreen
 import com.strangerhelp.app.ui.screens.profile.VerifyIdScreen
@@ -133,6 +137,35 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                 composable("ask") { AskScreen(navController) }
                 composable("pulse") { PulseScreen(navController) }
                 composable("notifications") { NotificationsScreen(navController) }
+                composable(
+                    "webview?url={url}",
+                    arguments = listOf(navArgument("url") { type = NavType.StringType })
+                ) { entry ->
+                    val url = entry.arguments?.getString("url") ?: ""
+                    WebViewScreen(url = url, navController = navController)
+                }
+                composable("disclaimer") {
+                    LegalScreen(
+                        title = "Disclaimer",
+                        content = LegalTexts.DISCLAIMER,
+                        navController = navController
+                    )
+                }
+                composable("cookie_policy") {
+                    LegalScreen(
+                        title = "Cookie Policy",
+                        content = LegalTexts.COOKIE_POLICY,
+                        navController = navController
+                    )
+                }
+                composable("community_guidelines") {
+                    LegalScreen(
+                        title = "Community Guidelines",
+                        content = LegalTexts.COMMUNITY_GUIDELINES,
+                        navController = navController
+                    )
+                }
+
 
                 composable("path_setup") { PathSetupScreen(navController) }
                 composable("path_active") { PathActiveScreen(navController) }

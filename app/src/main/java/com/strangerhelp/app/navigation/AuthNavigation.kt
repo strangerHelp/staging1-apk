@@ -23,10 +23,12 @@ fun AuthNavigation(onLoginSuccess: (User) -> Unit) {
         composable("landing") {
             LandingScreen(onLoginClick = { navController.navigate("login") })
         }
+        
         composable("login") {
             LoginScreen(
                 onLoginSuccess = onLoginSuccess,
-                onForgotPasswordClick = { navController.navigate("forgot_password") }
+                onForgotPasswordClick = { navController.navigate("forgot_password") },
+                onGoogleLoginClick = { navController.navigate("oauth_webview") }
             )
         }
         composable("forgot_password") {

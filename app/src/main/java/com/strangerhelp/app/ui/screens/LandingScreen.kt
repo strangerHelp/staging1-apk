@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -269,7 +270,7 @@ fun LandingScreen(onLoginClick: () -> Unit) {
                                 Text(" 4.9", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextDark)
                             }
                             Spacer(modifier = Modifier.height(4.dp))
-                            Surface(color = verifiedCyan, shape = RoundedCornerShape(4.dp)) {
+                            Surface(color = verifiedCyan, shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                                 Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Filled.VerifiedUser, contentDescription = null, tint = verifiedCyanText, modifier = Modifier.size(12.dp))
                                     Spacer(modifier = Modifier.width(4.dp))

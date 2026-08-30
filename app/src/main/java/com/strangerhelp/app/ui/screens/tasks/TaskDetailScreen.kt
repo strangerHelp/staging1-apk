@@ -230,7 +230,7 @@ fun TaskInfoCard(task: Task) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, HairlineColor)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -253,7 +253,7 @@ fun TaskInfoCard(task: Task) {
 
 @Composable
 fun CategoryChip(label: String, containerColor: Color, textColor: Color) {
-    Surface(color = containerColor, shape = RoundedCornerShape(16.dp)) {
+    Surface(color = containerColor, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
         Text(label, color = textColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
     }
 }
@@ -264,7 +264,7 @@ fun DescriptionSection(description: String) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, HairlineColor)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("📝 Description", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = PrimaryDark)
@@ -293,7 +293,7 @@ fun InfoBox(title: String, value: String, modifier: Modifier = Modifier) {
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, HairlineColor)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(title, fontSize = 12.sp, color = MutedText, fontWeight = FontWeight.Medium)
@@ -309,17 +309,17 @@ fun GroupTaskProgress(task: Task) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, HairlineColor)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("👥 Group Task", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = PrimaryDark)
-                Surface(color = AccentOrange, shape = RoundedCornerShape(16.dp)) {
+                Surface(color = AccentOrange, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                     Text("0/${task.maxClaimers} Joined", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
                 }
             }
             Spacer(Modifier.height(12.dp))
-            LinearProgressIndicator(progress = 0f, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = AccentOrange, trackColor = HairlineColor)
+            LinearProgressIndicator(progress = 0f, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = AccentOrange, trackColor = MaterialTheme.colorScheme.outline)
         }
     }
 }
@@ -370,7 +370,7 @@ fun MapSection(task: Task) {
             .fillMaxWidth()
             .height(280.dp),
         shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, HairlineColor)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column {
             // Map Preview
@@ -463,7 +463,7 @@ fun PosterInfoCard(task: Task) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, HairlineColor)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -499,7 +499,7 @@ fun ClaimRequestsSection(task: Task, viewModel: TaskDetailViewModel) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, HairlineColor)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("🔔 Claim Requests (${pendingRequests.size})", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
@@ -730,6 +730,24 @@ fun VisitorActions(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
+
+        // ⭐ P2P Payment Notice
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+            border = BorderStroke(1.dp, Color(0xFFFFB300)),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                Icon(Icons.Default.Warning, contentDescription = "Warning", tint = Color(0xFFFF8F00), modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text("⚠️ Direct Payment — Escrow Coming Soon", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFFE65100))
+                    Text("Payment of ₹${task.budget} is made directly by the poster to the helper via UPI after completion. StrangerHelp does not hold or process payments.", fontSize = 12.sp, color = Color(0xFFE65100), lineHeight = 16.sp, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+        }
+        
         ClaimButton(
             state = claimState,
             taskBudget = task.budget,
@@ -782,7 +800,7 @@ fun VisitorActions(
 
 @Composable
 fun LoginPrompt(navController: NavController) {
-    Card(colors = CardDefaults.cardColors(containerColor = SurfaceVariantColor), border = BorderStroke(1.dp, HairlineColor)) {
+    Card(colors = CardDefaults.cardColors(containerColor = SurfaceVariantColor), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
         Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Login to claim this task or message the poster.", fontSize = 14.sp, color = MutedText, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             Spacer(Modifier.height(12.dp))
@@ -800,7 +818,7 @@ fun ShareSection(task: Task) {
         OutlinedButton(
             onClick = { shareTask(context, task) },
             modifier = Modifier.weight(1f).height(48.dp),
-            border = BorderStroke(1.dp, HairlineColor),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark)
         ) {
             Icon(Icons.Default.Share, null, modifier = Modifier.size(16.dp))

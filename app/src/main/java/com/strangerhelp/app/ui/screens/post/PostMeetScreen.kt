@@ -12,7 +12,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
-import com.strangerhelp.app.ui.theme.Hairline
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,7 +123,7 @@ fun PostMeetScreen(navController: NavController) {
             onClick = { /* TODO */ },
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(12.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Hairline)
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         ) {
             Icon(Icons.Filled.Mic, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))

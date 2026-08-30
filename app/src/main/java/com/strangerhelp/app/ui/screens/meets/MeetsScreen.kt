@@ -302,14 +302,14 @@ fun MeetCard(meet: Meet) {
                 
                 // Badges
                 if (isActive) {
-                    Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) {
+                    Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                         Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Box(modifier = Modifier.size(6.dp).background(Color(0xFF4CAF50), CircleShape))
                             Text("Active", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2E7D32), fontWeight = FontWeight.Medium)
                         }
                     }
                 } else if (isWaitlist || meet.title.contains("Language")) {
-                    Surface(color = Color(0xFFFFF3E0), shape = RoundedCornerShape(8.dp)) {
+                    Surface(color = Color(0xFFFFF3E0), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                         Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Box(modifier = Modifier.size(6.dp).background(Color(0xFFFF9800), CircleShape))
                             Text("Filling\nFast", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF6C00), fontWeight = FontWeight.Medium, lineHeight = 12.sp)

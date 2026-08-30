@@ -65,7 +65,7 @@ fun ForgotPasswordScreen(navController: NavController) {
             Surface(
                 shape = CircleShape,
                 color = Color(0xFFF2F2F2),
-                border = BorderStroke(1.dp, Color(0xFFE5E5E5)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                 modifier = Modifier.size(64.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -142,8 +142,7 @@ fun ForgotPasswordScreen(navController: NavController) {
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White,
                         focusedBorderColor = Primary,
-                        unfocusedBorderColor = Hairline
-                    )
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline)
                 )
             }
             

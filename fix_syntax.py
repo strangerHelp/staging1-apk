@@ -1,13 +1,26 @@
-with open("app/src/main/java/com/strangerhelp/app/ui/screens/profile/ProfileScreen.kt", "r") as f:
-    content = f.read()
+import os
+import re
 
-target = """, modifier = Modifier.weight(1f))
-                QuickActionCard(icon = Icons.Default.CardGiftcard, label = "Refer & Earn", onClick = { }, modifier = Modifier.weight(1f))
-                QuickActionCard(icon = Icons.Outlined.AccountBalanceWallet, label = "Karma Wallet", onClick = { }, modifier = Modifier.weight(1f))
-            }"""
+def fix_file(path, replacements):
+    with open(path, 'r') as f:
+        content = f.read()
+    
+    for old, new in replacements:
+        content = content.replace(old, new)
+        
+    with open(path, 'w') as f:
+        f.write(content)
 
-if target in content:
-    content = content.replace(target, "")
+fix_file('app/src/main/java/com/strangerhelp/app/ui/screens/auth/ResetPasswordScreen.kt', [
+    ('unfocusedBorderColor = MaterialTheme.colorScheme.outline\n', 'unfocusedBorderColor = MaterialTheme.colorScheme.outline,\n'),
+    ('unfocusedBorderColor = MaterialTheme.colorScheme.outline)', 'unfocusedBorderColor = MaterialTheme.colorScheme.outline)') # check this
+])
 
-with open("app/src/main/java/com/strangerhelp/app/ui/screens/profile/ProfileScreen.kt", "w") as f:
-    f.write(content)
+fix_file('app/src/main/java/com/strangerhelp/app/ui/screens/post/PostTaskScreen.kt', [
+    ('unfocusedBorderColor = MaterialTheme.colorScheme.outline\n            singleLine = true,', 'unfocusedBorderColor = MaterialTheme.colorScheme.outline),\n            singleLine = true,'),
+    ('unfocusedBorderColor = MaterialTheme.colorScheme.outline\n            )', 'unfocusedBorderColor = MaterialTheme.colorScheme.outline)\n            )')
+])
+
+fix_file('app/src/main/java/com/strangerhelp/app/ui/screens/profile/ComingSoonScreens.kt', [
+    ('unfocusedBorderColor = MaterialTheme.colorScheme.outline\n                    focusedBorderColor = MaterialTheme.colorScheme.primary', 'unfocusedBorderColor = MaterialTheme.colorScheme.outline,\n                    focusedBorderColor = MaterialTheme.colorScheme.primary')
+])

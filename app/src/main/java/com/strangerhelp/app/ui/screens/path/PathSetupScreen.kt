@@ -102,7 +102,7 @@ fun PathSetupScreen(
                         .height(180.dp),
                     shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(0.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CardOutlineColor)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         Canvas(modifier = Modifier.fillMaxSize().background(Color(0xFFF4F6F5))) {
@@ -151,7 +151,7 @@ fun PathSetupScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CardOutlineColor)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         // From
@@ -170,7 +170,7 @@ fun PathSetupScreen(
                                 Icon(Icons.Outlined.Explore, contentDescription = null)
                             },
                             colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = CardOutlineColor,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                                 focusedBorderColor = PrimaryColor
                             )
                         )
@@ -190,7 +190,7 @@ fun PathSetupScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = CardOutlineColor,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                                 focusedBorderColor = PrimaryColor
                             )
                         )
@@ -243,7 +243,7 @@ fun PathSetupScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp),
                             colors = CardDefaults.cardColors(containerColor = BackgroundColor),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, CardOutlineColor)
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                         ) {
                             Row(
                                 modifier = Modifier

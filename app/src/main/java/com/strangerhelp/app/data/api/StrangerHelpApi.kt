@@ -77,6 +77,7 @@ interface StrangerHelpApi {
         @Part("category") category: okhttp3.RequestBody,
         @Part("budget") budget: okhttp3.RequestBody,
         @Part("location") location: okhttp3.RequestBody,
+        @Part("deadline") deadline: okhttp3.RequestBody,
         @Part("urgent") urgent: okhttp3.RequestBody? = null,
         @Part("visibility") visibility: okhttp3.RequestBody? = null,
         @Part files: List<okhttp3.MultipartBody.Part>? = null

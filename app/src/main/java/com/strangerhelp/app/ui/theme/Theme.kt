@@ -1,9 +1,15 @@
 package com.strangerhelp.app.ui.theme
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.dp
 
 private val LightColors = lightColorScheme(
     primary = Primary,
@@ -19,8 +25,8 @@ private val LightColors = lightColorScheme(
     onSurface = Primary,
     surfaceVariant = SurfaceVariant,
     onSurfaceVariant = Body,
-    outline = Hairline,
-    outlineVariant = Hairline,
+    outline = Color(0xFF737373),
+    outlineVariant = Color(0xFF8C8C8C),
     background = BackgroundLight,
     onBackground = Primary
 )
@@ -55,4 +61,12 @@ fun StrangerHelpTheme(
         typography = Typography,
         content = content
     )
+}
+
+val MaterialTheme.defaultBorder: BorderStroke
+    @Composable
+    get() = BorderStroke(1.dp, colorScheme.outline)
+
+fun Modifier.themeBorder(shape: Shape): Modifier = composed {
+    this.border(MaterialTheme.defaultBorder, shape)
 }

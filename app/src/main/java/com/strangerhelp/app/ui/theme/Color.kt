@@ -14,8 +14,8 @@ val Error = Color(0xFFEE0000)
 val Warning = Color(0xFFF5A623)
 
 val Surface = Color(0xFFFFFFFF)
-val SurfaceVariant = Color(0xFFF0F0F0)
-val Hairline = Color(0xFFEBEBEB)       // Borders
+val SurfaceVariant = Color(0xFFF5F5F5)
+val Hairline = Color(0xFFCCCCCC)       // Borders
 
 val Body = Color(0xFF4D4D4D)           // Body text
 val Muted = Color(0xFF666666)          // Muted text (WCAG AA)

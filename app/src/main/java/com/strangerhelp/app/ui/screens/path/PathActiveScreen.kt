@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -108,7 +109,7 @@ fun PathActiveScreen(
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, CardOutlineColor)
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                         ) {
                             Column(modifier = Modifier.padding(24.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("No tasks found yet.", color = MutedText, fontSize = 15.sp)
@@ -152,7 +153,7 @@ fun PathStatusCard(path: Path?, onRefresh: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, CardOutlineColor)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             // Left Accent
@@ -178,7 +179,8 @@ fun PathStatusCard(path: Path?, onRefresh: () -> Unit) {
                     
                     Surface(
                         color = Color(0xFFF0F0F0),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                             Icon(Icons.Outlined.Timer, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextColor)
@@ -239,7 +241,7 @@ fun PathTaskCard(task: PathTask, onClick: () -> Unit) {
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, CardOutlineColor)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -268,14 +270,14 @@ fun PathTaskCard(task: PathTask, onClick: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(color = Color(0xFFF0F0F0), shape = RoundedCornerShape(6.dp)) {
+                Surface(color = Color(0xFFF0F0F0), shape = RoundedCornerShape(6.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                     Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Map, contentDescription = null, modifier = Modifier.size(14.dp), tint = MutedText)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("${"%.1f".format(task.offPath)} km off route", fontSize = 12.sp, color = MutedText)
                     }
                 }
-                Surface(color = Color(0xFFF0F0F0), shape = RoundedCornerShape(6.dp)) {
+                Surface(color = Color(0xFFF0F0F0), shape = RoundedCornerShape(6.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                     Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.DirectionsWalk, contentDescription = null, modifier = Modifier.size(14.dp), tint = MutedText)
                         Spacer(modifier = Modifier.width(4.dp))

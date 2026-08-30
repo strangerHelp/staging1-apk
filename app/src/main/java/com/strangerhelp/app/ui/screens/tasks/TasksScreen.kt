@@ -1,6 +1,7 @@
 package com.strangerhelp.app.ui.screens.tasks
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,7 +41,6 @@ val TrustColor = Color(0xFF2A9D8F)
 val ErrorColor = Color(0xFFEE0000)
 val SurfaceVariantColor = Color(0xFFFAFAFA)
 val MutedText = Color(0xFF888888)
-val HairlineColor = Color(0xFFEBEBEB)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -161,7 +161,7 @@ fun TasksScreen(navController: NavController) {
                     modifier = Modifier.weight(1f).height(50.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryDark,
-                        unfocusedBorderColor = HairlineColor,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                         unfocusedContainerColor = Color.White,
                         focusedContainerColor = Color.White
                     ),
@@ -175,7 +175,7 @@ fun TasksScreen(navController: NavController) {
                         onClick = { sortExpanded = true },
                         modifier = Modifier
                             .size(50.dp)
-                            .border(1.dp, HairlineColor, RoundedCornerShape(12.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
                     ) {
                         Icon(Icons.Default.FilterList, contentDescription = "Sort", tint = PrimaryDark)
                     }
@@ -222,7 +222,7 @@ fun TasksScreen(navController: NavController) {
                         modifier = Modifier.clickable { selectedCategory = category },
                         shape = RoundedCornerShape(16.dp),
                         color = if (isSelected) PrimaryDark else Color.Transparent,
-                        border = if (isSelected) null else BorderStroke(1.dp, HairlineColor)
+                        border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Text(
                             text = category,
@@ -278,10 +278,10 @@ fun TasksScreen(navController: NavController) {
 @Composable
 fun TaskCard(task: Task, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        modifier = Modifier.animateContentSize().fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, HairlineColor),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -296,7 +296,7 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                     Surface(
                         color = SurfaceVariantColor,
                         shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, HairlineColor)
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.Description, null, modifier = Modifier.size(12.dp), tint = MutedText)
@@ -377,7 +377,7 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                 Text(task.deadline, fontSize = 12.sp, color = MutedText)
             }
             
-            Divider(modifier = Modifier.padding(vertical = 12.dp), color = HairlineColor)
+            Divider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outline)
             
             // Bottom Row: Poster + Posted Time + Status
             Row(
