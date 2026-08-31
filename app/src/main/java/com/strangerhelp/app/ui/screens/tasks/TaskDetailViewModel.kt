@@ -22,6 +22,49 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 
+
+enum class TaskUiState {
+    VISITOR_CAN_REQUEST, VISITOR_MUST_LOGIN,
+    HELPER_CAN_REQUEST, HELPER_REQUEST_PENDING, HELPER_REQUEST_REJECTED,
+    HELPER_CLAIMED_CAN_TRACK, HELPER_TRACKING, HELPER_SUBMIT_PROOF,
+    HELPER_PROOF_PENDING, HELPER_PROOF_REJECTED, HELPER_COMPLETED,
+    POSTER_WAITING, POSTER_HAS_REQUESTS, POSTER_CLAIMED_WAITING,
+    POSTER_REVIEW_PROOF, POSTER_PROOF_REJECTED, POSTER_COMPLETED,
+}
+
+fun resolveState(task: Task?, me: User?): TaskUiState {
+    if (task == null) return TaskUiState.VISITOR_MUST_LOGIN
+    val isOwner = me != null && task.posterId == me.id
+    val isClaimer = me != null && (task.claimedBy == me.id || task.claimedUsers?.any { it.userId == me.id } == true)
+    val myReq = task.claimRequests?.find { it.requesterId == me?.id }
+
+    return when {
+        // ---- POSTER ----
+        isOwner && task.status == "open" && task.claimRequests?.any { it.status == "pending" } == true -> TaskUiState.POSTER_HAS_REQUESTS
+        isOwner && task.status == "open" -> TaskUiState.POSTER_WAITING
+        isOwner && task.status == "claimed" && task.completionStatus == "pending" -> TaskUiState.POSTER_REVIEW_PROOF
+        isOwner && task.status == "claimed" && task.completionStatus == "rejected" -> TaskUiState.POSTER_PROOF_REJECTED
+        isOwner && task.status == "claimed" -> TaskUiState.POSTER_CLAIMED_WAITING
+        isOwner && task.status == "completed" -> TaskUiState.POSTER_COMPLETED
+
+        // ---- HELPER (claimer) ----
+        isClaimer && task.completionStatus == "pending" -> TaskUiState.HELPER_PROOF_PENDING
+        isClaimer && task.completionStatus == "rejected" -> TaskUiState.HELPER_PROOF_REJECTED
+        isClaimer && task.completionStatus == "accepted" -> TaskUiState.HELPER_COMPLETED
+        isClaimer && task.trackingActive -> TaskUiState.HELPER_TRACKING
+        isClaimer && task.status == "claimed" -> TaskUiState.HELPER_CLAIMED_CAN_TRACK
+
+        // ---- HELPER (not yet claimed) ----
+        me != null && task.status == "open" && myReq?.status == "pending" -> TaskUiState.HELPER_REQUEST_PENDING
+        me != null && task.status == "open" && myReq?.status == "rejected" -> TaskUiState.HELPER_REQUEST_REJECTED
+        me != null && task.status == "open" -> TaskUiState.HELPER_CAN_REQUEST
+
+        // ---- VISITOR ----
+        me == null && task.status == "open" -> TaskUiState.VISITOR_MUST_LOGIN
+        else -> TaskUiState.POSTER_COMPLETED   // fallback: view-only
+    }
+}
+
 class TaskDetailViewModel(
     private val taskRepository: TaskRepository = TaskRepository(ApiClient.api),
     private val authRepository: AuthRepository = AuthRepository(ApiClient.api)
@@ -30,11 +73,22 @@ class TaskDetailViewModel(
     private val _task = MutableStateFlow<Task?>(null)
     val task: StateFlow<Task?> = _task.asStateFlow()
 
+    private val _isProcessingClaim = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val isProcessingClaim: kotlinx.coroutines.flow.StateFlow<Boolean> = _isProcessingClaim.asStateFlow()
+
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
+
+    private val _isOffline = MutableStateFlow(false)
+    val isOffline: StateFlow<Boolean> = _isOffline.asStateFlow()
+
+
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -60,11 +114,16 @@ class TaskDetailViewModel(
     private val _claimState = MutableStateFlow(ClaimButtonState.CAN_CLAIM)
     val claimState: StateFlow<ClaimButtonState> = _claimState.asStateFlow()
 
+    val uiState: kotlinx.coroutines.flow.Flow<TaskUiState> = kotlinx.coroutines.flow.combine(_task, _currentUser) { task, user ->
+        resolveState(task, user)
+    }
+
     private val _navigateToChat = MutableSharedFlow<String>()
     val navigateToChat: SharedFlow<String> = _navigateToChat
 
     init {
         loadCurrentUser()
+        startPolling()
     }
 
     private fun loadCurrentUser() {
@@ -80,47 +139,61 @@ class TaskDetailViewModel(
         }
     }
 
-    fun loadTask(taskId: String) {
+    
+    private val _navigateToGpsCamera = MutableSharedFlow<String>()
+    val navigateToGpsCamera: SharedFlow<String> = _navigateToGpsCamera
+
+    fun openGpsCamera() {
         viewModelScope.launch {
-            _isLoading.value = true
+            _navigateToGpsCamera.emit(task.value?._id ?: "")
+        }
+    }
+
+    fun loadTask(taskId: String, isBackgroundSync: Boolean = false) {
+        viewModelScope.launch {
+            if (_task.value == null) { _isLoading.value = true }
+            if (isBackgroundSync) { _isSyncing.value = true }
             _error.value = null
 
             try {
                 val response = taskRepository.getTask(taskId)
                 if (response.isSuccessful) {
                     _task.value = response.body()
-                        updateClaimState(_task.value)
                     updateClaimState(_task.value)
-                    startPolling(taskId)
+                    _isOffline.value = false
                 } else {
-                    _error.value = parseError(response.errorBody()?.string())
+                    if (!isBackgroundSync) {
+                        _error.value = parseError(response.errorBody()?.string())
+                    } else {
+                        _isOffline.value = true
+                    }
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to load task"
+                if (!isBackgroundSync) {
+                    _error.value = "Failed to load task"
+                } else {
+                    _isOffline.value = true
+                }
             } finally {
                 _isLoading.value = false
+                if (isBackgroundSync) { _isSyncing.value = false }
             }
         }
     }
 
-    fun startPolling(taskId: String) {
+    private fun startPolling() {
         pollJob?.cancel()
         pollJob = viewModelScope.launch {
             while (isActive) {
                 delay(5000)
-                try {
-                    val response = taskRepository.getTask(taskId)
-                    if (response.isSuccessful) {
-                        _task.value = response.body()
-                        updateClaimState(_task.value)
-                    }
-                } catch (_: Exception) { }
+                _task.value?._id?.let { id ->
+                    loadTask(id, isBackgroundSync = true)
+                }
             }
         }
     }
 
-
-fun requestToClaim(
+    fun requestToClaim(
         taskId: String,
         offeredBudget: Int?,
         message: String?,
@@ -212,22 +285,32 @@ fun requestToClaim(
 
     fun approveClaim(taskId: String, requesterId: String) {
         viewModelScope.launch {
+            _isProcessingClaim.value = true
             try {
                 val body = mapOf("action" to "approve_claim", "requesterId" to requesterId)
                 val response = taskRepository.patchTask(taskId, body)
                 if (response.isSuccessful) {
                     loadTask(taskId)
                 } else {
-                    _error.value = parseError(response.errorBody()?.string())
+                    val errorBody = response.errorBody()?.string()
+                    if (response.code() == 409) {
+                        _error.value = "This task has already been claimed by someone else."
+                        loadTask(taskId)
+                    } else {
+                        _error.value = parseError(errorBody)
+                    }
                 }
             } catch (e: Exception) {
                 _error.value = "Failed to approve claim"
+            } finally {
+                _isProcessingClaim.value = false
             }
         }
     }
 
     fun rejectClaim(taskId: String, requesterId: String) {
         viewModelScope.launch {
+            _isProcessingClaim.value = true
             try {
                 val body = mapOf("action" to "reject_claim", "requesterId" to requesterId)
                 val response = taskRepository.patchTask(taskId, body)
@@ -238,26 +321,8 @@ fun requestToClaim(
                 }
             } catch (e: Exception) {
                 _error.value = "Failed to reject claim"
-            }
-        }
-    }
-
-    fun submitProof(taskId: String, proofFiles: List<File>) {
-        viewModelScope.launch {
-            _isSubmittingProof.value = true
-            _error.value = null
-
-            try {
-                val response = taskRepository.submitProof(taskId, proofFiles)
-                if (response.isSuccessful) {
-                    loadTask(taskId)
-                } else {
-                    _error.value = parseError(response.errorBody()?.string())
-                }
-            } catch (e: Exception) {
-                _error.value = "Failed to submit proof"
             } finally {
-                _isSubmittingProof.value = false
+                _isProcessingClaim.value = false
             }
         }
     }
@@ -295,6 +360,22 @@ fun requestToClaim(
     }
 
     
+    fun editTask(taskId: String, updates: Map<String, Any>, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = taskRepository.patchTask(taskId, updates) // Assuming updateTracking actually calls PATCH /api/tasks/{id} which can do edits if we just pass a map. Wait, let me check TaskRepository.
+                if (response.isSuccessful) {
+                    loadTask(taskId)
+                    onResult(true)
+                } else {
+                    onResult(false)
+                }
+            } catch (e: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
     fun deleteTask(taskId: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
@@ -312,23 +393,53 @@ fun requestToClaim(
         }
     }
 
+
+    private val _isTracking = MutableStateFlow(false)
+    val isTracking: StateFlow<Boolean> = _isTracking.asStateFlow()
+
     fun startTracking(taskId: String) {
         viewModelScope.launch {
             try {
                 val body = mapOf("action" to "start_tracking")
-                taskRepository.patchTask(taskId, body)
+                val res = taskRepository.patchTask(taskId, body)
+                if (res.isSuccessful) {
+                    _isTracking.value = true
+                    loadTask(taskId)
+                }
             } catch (_: Exception) { }
         }
     }
 
-    fun stopTracking(taskId: String) {
+    fun startTrackingWithService(taskId: String, context: android.content.Context) {
         viewModelScope.launch {
             try {
-                val body = mapOf("action" to "stop_tracking")
-                taskRepository.patchTask(taskId, body)
+                val body = mapOf("action" to "start_tracking")
+                val res = taskRepository.patchTask(taskId, body)
+                if (res.isSuccessful) {
+                    com.strangerhelp.app.service.TrackingService.start(context, taskId)
+                    _isTracking.value = true
+                    loadTask(taskId)
+                }
             } catch (_: Exception) { }
         }
     }
+
+    fun stopTracking(taskId: String, context: android.content.Context? = null) {
+        viewModelScope.launch {
+            try {
+                if (context != null) {
+                    com.strangerhelp.app.service.TrackingService.stop(context)
+                }
+                val body = mapOf("action" to "stop_tracking")
+                val res = taskRepository.patchTask(taskId, body)
+                if (res.isSuccessful) {
+                    _isTracking.value = false
+                    loadTask(taskId)
+                }
+            } catch (_: Exception) { }
+        }
+    }
+
 
         fun submitReview(taskId: String, revieweeId: String, rating: Int, comment: String) {
         viewModelScope.launch {

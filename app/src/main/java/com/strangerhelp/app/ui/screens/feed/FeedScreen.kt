@@ -26,6 +26,10 @@ import androidx.compose.material.icons.outlined.DirectionsBike
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.strangerhelp.app.ui.screens.notifications.NotificationViewModel
+import com.strangerhelp.app.ui.screens.notifications.NotificationViewModelFactory
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,11 +55,13 @@ val BgColor = Color(0xFFFAF9F6) // slightly warmer off-white background
 fun FeedScreen(
     navController: NavController,
     user: User?,
-    viewModel: FeedViewModel = viewModel()
+    viewModel: FeedViewModel = viewModel(),
+    notificationViewModel: NotificationViewModel = viewModel(factory = NotificationViewModelFactory())
 ) {
     val stats by viewModel.stats.collectAsState()
     val recentTasks by viewModel.recentTasks.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val unreadCount by notificationViewModel.unreadCount.collectAsStateWithLifecycle()
 
     LaunchedEffect(user?.id) {
         viewModel.loadHomeData(user?.id)
@@ -71,7 +77,7 @@ fun FeedScreen(
             verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
             item {
-                HomeHeader(user = user, unreadCount = 3) {
+                HomeHeader(user = user, unreadCount = unreadCount) {
                     navController.navigate("notifications")
                 }
             }

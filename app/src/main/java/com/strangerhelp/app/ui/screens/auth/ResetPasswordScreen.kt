@@ -45,8 +45,9 @@ fun ResetPasswordScreen(navController: NavController, token: String) {
     var success by remember { mutableStateOf(false) }
     
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     
-    val minLength = password.length >= 8
+    val minLength = password.length >= 10
     val hasNumber = password.any { it.isDigit() }
     val hasSpecial = password.any { !it.isLetterOrDigit() }
     val isMatch = password.isNotEmpty() && password == confirmPassword
@@ -242,7 +243,7 @@ fun ResetPasswordScreen(navController: NavController, token: String) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("Password Requirements", fontWeight = FontWeight.Bold, color = Primary, fontSize = 16.sp)
                             Spacer(Modifier.height(12.dp))
-                            RequirementItem("Minimum 8 characters", minLength)
+                            RequirementItem("Minimum 10 characters", minLength)
                             RequirementItem("At least one number", hasNumber)
                             RequirementItem("At least one special character", hasSpecial)
                         }
@@ -260,13 +261,19 @@ fun ResetPasswordScreen(navController: NavController, token: String) {
                         try {
                             val res = ApiClient.api.resetPassword(mapOf("token" to token, "password" to password))
                             if (res.isSuccessful) {
-                                success = true
+                                
+                                android.widget.Toast.makeText(context, "Password reset successful. Please log in.", android.widget.Toast.LENGTH_LONG).show()
+                                ApiClient.clearSession()
+
+                                navController.navigate("login") {
+                                    popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                                }
                             } else {
                                 val errorStr = res.errorBody()?.string() ?: ""
                                 error = if (res.code() == 429) {
-                                    "Too many attempts. Please try again later."
-                                } else if (res.code() == 400 || errorStr.contains("invalid", ignoreCase = true) || errorStr.contains("expire", ignoreCase = true)) {
-                                    "This reset link is invalid or has expired."
+                                    "Too many requests. Please wait before trying again."
+                                } else if (res.code() == 400 && errorStr.contains("expired", ignoreCase = true)) {
+                                    "Reset link has expired. Please request a new one."
                                 } else {
                                     "Failed to reset password. Please try again."
                                 }

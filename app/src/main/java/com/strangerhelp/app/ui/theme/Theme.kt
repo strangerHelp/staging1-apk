@@ -4,6 +4,13 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
+import android.app.Activity
+import android.os.Build
+import android.view.WindowManager
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -56,8 +63,26 @@ fun StrangerHelpTheme(
     darkTheme: Boolean = false, // Forced white/light theme
     content: @Composable () -> Unit
 ) {
+    val colorScheme = if (darkTheme) DarkColors else LightColors
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                // Ensure status bar is visible
+                window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                window.statusBarColor = colorScheme.surface.toArgb()
+
+                // Set icon colors
+                val darkIcons = !darkTheme
+                WindowInsetsControllerCompat(window, view).isAppearanceLightStatusBars = darkIcons
+            }
+        }
+    }
+
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = colorScheme,
         typography = Typography,
         content = content
     )

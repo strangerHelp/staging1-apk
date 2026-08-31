@@ -1,24 +1,51 @@
-import re
+import sys
 
-with open('app/src/main/java/com/strangerhelp/app/navigation/AppNavigation.kt', 'r') as f:
+with open("app/src/main/java/com/strangerhelp/app/navigation/AppNavigation.kt", "r") as f:
     content = f.read()
 
-import_statement = "import com.strangerhelp.app.ui.screens.WebViewScreen\n"
+imports = """
+import com.strangerhelp.app.ui.screens.meets.CreateMeetScreen
+import com.strangerhelp.app.ui.screens.meets.MeetDetailScreen
+import com.strangerhelp.app.ui.screens.meets.MeetViewModel
+import com.strangerhelp.app.ui.screens.meets.MeetViewModelFactory
+import com.strangerhelp.app.ui.screens.meets.MeetsListScreen
+import com.strangerhelp.app.data.repository.MeetRepository
+"""
 
-if import_statement not in content:
-    content = content.replace('import androidx.compose.runtime.Composable', import_statement + 'import androidx.compose.runtime.Composable')
+if "import com.strangerhelp.app.ui.screens.meets" not in content:
+    content = content.replace("import com.strangerhelp.app.ui.screens.profile.KarmaWalletScreen", "import com.strangerhelp.app.ui.screens.profile.KarmaWalletScreen\n" + imports)
 
-route = """
-                composable(
-                    "webview?url={url}",
-                    arguments = listOf(navArgument("url") { type = NavType.StringType })
-                ) { entry ->
-                    val url = entry.arguments?.getString("url") ?: ""
-                    WebViewScreen(url = url, navController = navController)
+# We need an instance of MeetViewModel. 
+# We'll initialize MeetRepository with ApiClient.api and AuthRepository.
+viewmodel_init = """
+    val meetViewModel: MeetViewModel = viewModel(
+        factory = MeetViewModelFactory(
+            MeetRepository(com.strangerhelp.app.data.api.ApiClient.api),
+            com.strangerhelp.app.data.repository.AuthRepository(com.strangerhelp.app.data.api.ApiClient.api)
+        )
+    )
+"""
+
+if "val meetViewModel" not in content:
+    content = content.replace("val chatViewModel: ChatViewModel = viewModel()", "val chatViewModel: ChatViewModel = viewModel()\n" + viewmodel_init)
+
+routes = """
+                composable("meets") {
+                    MeetsListScreen(viewModel = meetViewModel, navController = navController)
+                }
+                composable("create_meet") {
+                    CreateMeetScreen(viewModel = meetViewModel, navController = navController)
+                }
+                composable("meet_detail/{meetId}") { backStackEntry ->
+                    val meetId = backStackEntry.arguments?.getString("meetId") ?: ""
+                    MeetDetailScreen(meetId = meetId, viewModel = meetViewModel, navController = navController)
                 }
 """
 
-content = content.replace('composable("notifications") { NotificationsScreen(navController) }', 'composable("notifications") { NotificationsScreen(navController) }' + route)
+if "composable(\"meets\")" not in content:
+    # insert before the final '}' of NavHost block
+    # Actually just insert it after karma_wallet
+    content = content.replace('KarmaWalletScreen(navController = navController)\n                }', 'KarmaWalletScreen(navController = navController)\n                }\n' + routes)
 
-with open('app/src/main/java/com/strangerhelp/app/navigation/AppNavigation.kt', 'w') as f:
+with open("app/src/main/java/com/strangerhelp/app/navigation/AppNavigation.kt", "w") as f:
     f.write(content)

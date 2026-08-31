@@ -56,7 +56,10 @@ data class Task(
     val claimerVerified: Boolean = false,
     val distance: Double? = null,
     val attachments: List<String> = emptyList(),
+    val attachmentCount: Int = 0,
     val completionProof: List<String> = emptyList(),
+    @com.google.gson.annotations.SerializedName("completion_status") val completionStatus: String = "",
+    @com.google.gson.annotations.SerializedName("rejection_reason") val rejectionReason: String? = null,
     val createdAt: String = "",
     val trackingActive: Boolean = false,
     val helperLat: Double? = null,
@@ -64,7 +67,6 @@ data class Task(
     
     val visibility: String = "public",
     val inviteCode: String? = null,
-    val completionStatus: String? = null,
     val claimRequests: List<ClaimRequest>? = emptyList(),
     val claimedUsers: List<ClaimedUser>? = emptyList(),
     val maxClaimers: Int = 1
@@ -87,6 +89,7 @@ data class Message(
     val senderName: String = "",
     val text: String = "",
     val attachments: List<String> = emptyList(),
+    val attachmentCount: Int = 0,
     val type: String = "text",
     val createdAt: String = "",
 )
@@ -121,7 +124,7 @@ data class NotificationResponse(
 
 @Entity(tableName = "meets")
 data class Meet(
-    @PrimaryKey val id: String = "",
+    @PrimaryKey @SerializedName("_id") val id: String = "",
     val title: String = "",
     val description: String = "",
     val category: String = "",
@@ -129,63 +132,84 @@ data class Meet(
     val date: String = "",
     val time: String = "",
     val visibility: String = "public",
-    val invite_code: String = "",
-    val max_attendees: Int = 0,
-    val host_id: String = "",
-    val host_name: String = "",
-    val voice_note: String = "",
+    @SerializedName("invite_code") val inviteCode: String = "",
+    @SerializedName("max_attendees") val maxAttendees: Int = 0,
+    @SerializedName("host_id") val hostId: String = "",
+    @SerializedName("host_name") val hostName: String = "",
+    @SerializedName("voice_note") val voiceNote: String? = null,
     val anonymous: Int = 0,
-    val attendeeCount: Int = 0
+    val attendeeCount: Int = 0,
+    val attendees: List<Attendee> = emptyList()
 )
+
+data class Attendee(
+    @SerializedName("user_id") val userId: String = "",
+    @SerializedName("user_name") val userName: String = "",
+    @SerializedName("joined_at") val joinedAt: String = ""
+)
+
+data class MeetActionRequest(
+    val action: String // "join" or "leave"
+)
+
+data class MeetActionResponse(
+    val ok: Boolean
+)
+
 
 data class AuthResponse(val id: String = "", val name: String = "")
 
 data class UserResponse(val user: User?)
 
-data class GenericResponse(val ok: Boolean = false, val message: String = "")
-
-data class ErrorResponse(val error: String = "")
 
 @Entity(tableName = "help_requests")
 data class HelpRequest(
     @PrimaryKey val id: String = "",
-    val title: String = "",
-    val description: String = "",
-    val location: String = "",
-    val status: String = "open"
+    val title: String = ""
 )
+
+
 
 @Entity(tableName = "search_history")
 data class SearchHistory(
     @PrimaryKey val query: String = "",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = 0
 )
-
-data class UserStats(val rating: Double = 0.0, val totalReviews: Int = 0, val tasksCompleted: Int = 0, val completionRate: Int = 0, val trustScore: Int = 0)
-data class StatsResponse(val stats: UserStats)
 
 data class ClaimedUser(
-    val userId: String = "",
+    @SerializedName("user_id") val userId: String = "",
     val userName: String = "",
-    val claimedAt: String = ""
+    val avatar: String = ""
 )
 
-
-data class SupportResponse(
-    val messages: List<SupportMessage>,
-    @SerializedName("conversationId") val conversationId: String?
-)
-
-data class SupportMessage(
-    @SerializedName("_id") val id: String,
-    @SerializedName("senderId") val senderId: String,
-    @SerializedName("senderName") val senderName: String,
-    @SerializedName("text") val text: String,
-    @SerializedName("createdAt") val createdAt: String,
-    @SerializedName("isSupport") val isSupport: Boolean
+data class GenericResponse(
+    val success: Boolean = true,
+    val message: String = ""
 )
 
 data class VerificationStatus(
     val status: String = "",
     val verified: Boolean = false
+)
+
+data class SupportMessage(
+    val id: String = "",
+    val senderId: String = "",
+    val senderName: String = "",
+    val text: String = "",
+    val createdAt: String = "",
+    val isSupport: Boolean = false
+)
+
+data class SupportResponse(
+    val messages: List<SupportMessage> = emptyList()
+)
+
+data class UserStats(
+    val status: String = "",
+    val tasksCompleted: Int = 0,
+    val rating: Double = 0.0,
+    val totalReviews: Int = 0,
+    val completionRate: Int = 0,
+    val trustScore: Int = 0
 )

@@ -32,6 +32,7 @@ fun LocationPicker(
             value = query,
             onValueChange = { 
                 query = it
+                onLocationSelected(0.0, 0.0, it)
                 if (it.length >= 3) {
                     scope.launch {
                         delay(400) // Debounce

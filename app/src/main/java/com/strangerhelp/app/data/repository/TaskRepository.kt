@@ -37,6 +37,13 @@ class TaskRepository(private val api: StrangerHelpApi) {
         }
         return api.completeTask(taskId, action, part)
     }
+
+    suspend fun submitProofBytes(taskId: String, proofBytes: ByteArray): Response<Map<String, Any>> {
+        val action = "complete".toRequestBody("text/plain".toMediaTypeOrNull())
+        val reqBody = proofBytes.toRequestBody("image/jpeg".toMediaTypeOrNull(), 0, proofBytes.size)
+        val part = MultipartBody.Part.createFormData("proof", "proof.jpg", reqBody)
+        return api.completeTask(taskId, action, part)
+    }
     
     suspend fun deleteTask(taskId: String): Response<Map<String, Any>> {
         return api.deleteTask(taskId)

@@ -1,6 +1,9 @@
 package com.strangerhelp.app
 
 import android.app.Application
+import coil.ImageLoaderFactory
+import coil.ImageLoader
+import com.strangerhelp.app.utils.DataUriFetcher
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
@@ -13,7 +16,7 @@ import com.strangerhelp.app.data.local.AppDatabase
 import com.strangerhelp.app.utils.AppLogger
 import kotlinx.coroutines.CoroutineExceptionHandler
 
-class StrangerHelpApp : Application() {
+class StrangerHelpApp : Application(), ImageLoaderFactory {
 
     lateinit var database: AppDatabase
         private set
@@ -67,4 +70,13 @@ class StrangerHelpApp : Application() {
             AppLogger.e("CoroutineException", "Unhandled coroutine exception", exception)
         }
     }
+
+    override fun newImageLoader(): ImageLoader {
+        return ImageLoader.Builder(this)
+            .components {
+                add(DataUriFetcher.Factory())
+            }
+            .build()
+    }
+
 }

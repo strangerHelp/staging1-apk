@@ -12,6 +12,10 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.strangerhelp.app.ui.screens.notifications.NotificationViewModel
+import com.strangerhelp.app.ui.screens.notifications.NotificationViewModelFactory
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +41,14 @@ import com.strangerhelp.app.ui.screens.profile.VerifyIdScreen
 import com.strangerhelp.app.ui.screens.profile.ReferEarnScreen
 import com.strangerhelp.app.ui.screens.profile.KarmaWalletScreen
 
+import com.strangerhelp.app.ui.screens.meets.CreateMeetScreen
+import com.strangerhelp.app.ui.screens.meets.MeetDetailScreen
+import com.strangerhelp.app.ui.screens.meets.MeetViewModel
+import com.strangerhelp.app.ui.screens.meets.MeetViewModelFactory
+import com.strangerhelp.app.ui.screens.meets.MeetsListScreen
+import com.strangerhelp.app.data.repository.MeetRepository
+
+
 import com.strangerhelp.app.ui.screens.profile.VerificationScreen
 import com.strangerhelp.app.ui.screens.profile.AuthViewModel
 
@@ -47,7 +59,6 @@ import com.strangerhelp.app.ui.screens.profile.ProfileScreen
 import com.strangerhelp.app.ui.screens.profile.EditProfileScreen
 import com.strangerhelp.app.ui.screens.tasks.TaskDetailScreen
 import com.strangerhelp.app.ui.screens.tasks.TasksScreen
-import com.strangerhelp.app.ui.screens.meets.MeetsScreen
 import com.strangerhelp.app.ui.screens.wallet.WalletScreen
 import com.strangerhelp.app.ui.screens.leaderboard.LeaderboardScreen
 import com.strangerhelp.app.ui.screens.ask.AskScreen
@@ -70,21 +81,23 @@ val bottomNavItems = listOf(Screen.Feed, Screen.Tasks, Screen.Post, Screen.Chat,
 fun AppNavigation(user: User, onLogout: () -> Unit) {
     val navController = rememberNavController()
     val chatViewModel: ChatViewModel = viewModel()
+
+    val meetViewModel: MeetViewModel = viewModel(
+        factory = MeetViewModelFactory(
+            MeetRepository(com.strangerhelp.app.data.api.ApiClient.api),
+            com.strangerhelp.app.data.repository.AuthRepository(com.strangerhelp.app.data.api.ApiClient.api)
+        )
+    )
+
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val showBottomBar = currentRoute in bottomNavItems.map { it.route }
     val snackbarHostState = remember { SnackbarHostState() }
     
-    var unreadCount by remember { mutableIntStateOf(0) }
+    val notificationViewModel: NotificationViewModel = viewModel(factory = NotificationViewModelFactory())
+    val unreadCount by notificationViewModel.unreadCount.collectAsStateWithLifecycle()
+
     LaunchedEffect(Unit) {
-        while(true) {
-            try {
-                val res = com.strangerhelp.app.data.api.ApiClient.api.getNotifications()
-                if (res.isSuccessful) {
-                    unreadCount = res.body()?.unreadCount ?: 0
-                }
-            } catch (e: Exception) {}
-            kotlinx.coroutines.delay(10000)
-        }
+        notificationViewModel.startPolling()
     }
 
     androidx.compose.runtime.CompositionLocalProvider(com.strangerhelp.app.ui.components.LocalSnackbarHostState provides snackbarHostState) {
@@ -131,7 +144,7 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                 composable("support") { com.strangerhelp.app.ui.screens.chat.SupportChatScreen(navController = navController) }
                 composable(Screen.Profile.route) { ProfileScreen(navController, onLogout = onLogout) }
                 
-                composable("meets") { MeetsScreen(navController) }
+                // removed MeetsScreen
                 composable("wallet") { WalletScreen(navController) }
                 composable("leaderboard") { LeaderboardScreen(navController) }
                 composable("ask") { AskScreen(navController) }
@@ -168,7 +181,7 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
 
 
                 composable("path_setup") { PathSetupScreen(navController) }
-                composable("path_active") { PathActiveScreen(navController) }
+                composable("path_active") { PathSetupScreen(navController) }
 
                 composable("postMeet") { PostMeetScreen(navController) }
                 composable("postQuestion") { PostQuestionScreen(navController) }
@@ -198,6 +211,19 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                     )
                 }
                 
+                composable(
+                    "gps_camera/{taskId}",
+                    arguments = listOf(navArgument("taskId") { type = NavType.StringType })
+                ) { entry ->
+                    val taskId = entry.arguments?.getString("taskId") ?: ""
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    com.strangerhelp.app.ui.screens.tasks.GpsCameraScreen(
+                        taskId = taskId,
+                        viewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = com.strangerhelp.app.ui.screens.tasks.GpsCameraViewModelFactory(context)),
+                        navController = navController
+                    )
+                }
+
                 composable(
                     "task/{taskId}",
                     arguments = listOf(navArgument("taskId") { type = NavType.StringType })

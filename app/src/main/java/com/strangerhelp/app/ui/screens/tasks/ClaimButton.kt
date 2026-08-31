@@ -22,7 +22,7 @@ fun ClaimButton(
     val Primary = Color(0xFFFFB340) // AccentOrange
     val OnPrimary = Color.White
     val Warning = Color(0xFFFFA000)
-    val TrustColor = Color(0xFF00C853)
+    
 
     val (text, colors, enabled) = when (state) {
         TaskDetailViewModel.ClaimButtonState.CAN_CLAIM -> {
@@ -60,7 +60,7 @@ fun ClaimButton(
             }
             Triple(
                 label,
-                ButtonDefaults.buttonColors(containerColor = TrustColor.copy(alpha = 0.12f)),
+                ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFF10B981).copy(alpha = 0.12f)),
                 false
             )
         }
@@ -74,7 +74,7 @@ fun ClaimButton(
         TaskDetailViewModel.ClaimButtonState.JOINED -> {
             Triple(
                 "✓ Joined (${claimedUsers?.size ?: 0}/$maxClaimers)",
-                ButtonDefaults.buttonColors(containerColor = TrustColor.copy(alpha = 0.12f)),
+                ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFF10B981).copy(alpha = 0.12f)),
                 false
             )
         }
@@ -107,7 +107,7 @@ fun ClaimButton(
             fontSize = 14.sp,
             color = when (state) {
                 TaskDetailViewModel.ClaimButtonState.REQUESTED -> Warning
-                TaskDetailViewModel.ClaimButtonState.CLAIMED, TaskDetailViewModel.ClaimButtonState.JOINED -> TrustColor
+                TaskDetailViewModel.ClaimButtonState.CLAIMED, TaskDetailViewModel.ClaimButtonState.JOINED -> androidx.compose.ui.graphics.Color(0xFF10B981)
                 else -> OnPrimary
             }
         )

@@ -69,19 +69,8 @@ interface StrangerHelpApi {
     @GET("api/tasks/{id}")
     suspend fun getTask(@Path("id") id: String, @Query("invite") inviteCode: String? = null): Response<Task>
     
-    @Multipart
     @POST("api/tasks")
-    suspend fun postTask(
-        @Part("title") title: okhttp3.RequestBody,
-        @Part("description") description: okhttp3.RequestBody,
-        @Part("category") category: okhttp3.RequestBody,
-        @Part("budget") budget: okhttp3.RequestBody,
-        @Part("location") location: okhttp3.RequestBody,
-        @Part("deadline") deadline: okhttp3.RequestBody,
-        @Part("urgent") urgent: okhttp3.RequestBody? = null,
-        @Part("visibility") visibility: okhttp3.RequestBody? = null,
-        @Part files: List<okhttp3.MultipartBody.Part>? = null
-    ): Response<Map<String, String>>
+    suspend fun postTask(@Body body: okhttp3.RequestBody): Response<Map<String, @JvmSuppressWildcards Any>>
     
     @PATCH("api/tasks/{id}")
     suspend fun claimTask(@Path("id") id: String, @Body body: com.strangerhelp.app.data.model.ClaimTaskRequest): Response<com.strangerhelp.app.data.model.ClaimResponse>
@@ -123,6 +112,13 @@ interface StrangerHelpApi {
     // Notifications
     @GET("api/notifications")
     suspend fun getNotifications(): Response<NotificationResponse>
+
+    @PATCH("api/notifications/{id}/read")
+    suspend fun markAsRead(@Path("id") id: String): Response<com.strangerhelp.app.data.model.GenericResponse>
+
+    @PATCH("api/notifications/read-all")
+    suspend fun markAllAsRead(): Response<com.strangerhelp.app.data.model.GenericResponse>
+
     
     // Meets
     @GET("api/meets")
@@ -149,8 +145,8 @@ interface StrangerHelpApi {
     // Path
     @POST("api/path")
     suspend fun setPath(
-        @Body body: okhttp3.RequestBody
-    ): Response<com.google.gson.JsonObject>
+        @Body body: Map<String, @JvmSuppressWildcards Any>
+    ): Response<com.strangerhelp.app.data.model.PathSetResponse>
 
     @GET("api/path")
     suspend fun getPath(): Response<PathResponse>
@@ -169,4 +165,36 @@ interface StrangerHelpApi {
     suspend fun sendSupportMessage(
         @Body body: Map<String, String>
     ): Response<com.strangerhelp.app.data.model.SupportResponse>
+
+    
+    @GET("api/meets/{id}")
+    suspend fun getMeet(@Path("id") id: String): Response<com.strangerhelp.app.data.model.Meet>
+
+    @GET("api/meets")
+    suspend fun getMeetByCode(@Query("code") code: String): Response<com.strangerhelp.app.data.model.Meet>
+
+    @Multipart
+    @POST("api/meets")
+    suspend fun createMeet(
+        @Part("title") title: okhttp3.RequestBody,
+        @Part("description") description: okhttp3.RequestBody?,
+        @Part("category") category: okhttp3.RequestBody,
+        @Part("location") location: okhttp3.RequestBody?,
+        @Part("date") date: okhttp3.RequestBody,
+        @Part("time") time: okhttp3.RequestBody,
+        @Part("visibility") visibility: okhttp3.RequestBody,
+        @Part("max_attendees") maxAttendees: okhttp3.RequestBody,
+        @Part("anonymous") anonymous: okhttp3.RequestBody,
+        @Part voiceNote: okhttp3.MultipartBody.Part?
+    ): Response<com.strangerhelp.app.data.model.Meet>
+
+    @POST("api/meets/{id}/action")
+    suspend fun performMeetAction(@Path("id") id: String, @Body body: com.strangerhelp.app.data.model.MeetActionRequest): Response<com.strangerhelp.app.data.model.MeetActionResponse>
+
+    @DELETE("api/meets/{id}")
+    suspend fun deleteMeet(@Path("id") id: String): Response<com.strangerhelp.app.data.model.GenericResponse>
+
+
+    
+    
 }

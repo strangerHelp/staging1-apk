@@ -1,344 +1,313 @@
 package com.strangerhelp.app.ui.screens.path
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
-
-val PrimaryColor = Color(0xFFF59E0B) // Amber
-val BackgroundColor = Color(0xFFF9F9F9)
-val CardOutlineColor = Color(0xFFE5E5E5)
-val TextColor = Color(0xFF111111)
-val MutedText = Color(0xFF666666)
-val BlueBg = Color(0xFFEBF8FF)
-val CyanColor = Color(0xFF009688)
-val CyanColorDeep = Color(0xFF00796B)
-val Primary = Color(0xFFF59E0B)
-val Error = Color(0xFFD32F2F)
-val Warning = Color(0xFFF57C00)
+import com.strangerhelp.app.data.model.PlaceResult
+import com.strangerhelp.app.ui.theme.*
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PathSetupScreen(
     navController: NavController,
-    viewModel: PathViewModel = viewModel()
+    viewModel: PathViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val path by viewModel.path.collectAsState()
+    val tasks by viewModel.tasks.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val isPathActive by viewModel.isPathActive.collectAsState()
+    val matchedTasksCount by viewModel.matchedTasksCount.collectAsState()
 
-    var fromLocation by remember { mutableStateOf("Koramangala, Bangalore") }
-    var fromLat by remember { mutableDoubleStateOf(12.9345) }
-    var fromLng by remember { mutableDoubleStateOf(77.6123) }
-    var toLocation by remember { mutableStateOf("Indiranagar, Bangalore") }
-    var toLat by remember { mutableDoubleStateOf(12.9784) }
-    var toLng by remember { mutableDoubleStateOf(77.6408) }
-    var radiusKm by remember { mutableFloatStateOf(2.0f) }
+    // Form state
+    var fromQuery by remember { mutableStateOf("") }
+    var fromSuggestions by remember { mutableStateOf<List<PlaceResult>>(emptyList()) }
+    var selectedFrom by remember { mutableStateOf<PlaceResult?>(null) }
+
+    var toQuery by remember { mutableStateOf("") }
+    var toSuggestions by remember { mutableStateOf<List<PlaceResult>>(emptyList()) }
+    var selectedTo by remember { mutableStateOf<PlaceResult?>(null) }
+
+    var radiusKm by remember { mutableStateOf(1f) }
     var recurring by remember { mutableStateOf(false) }
+    var showMap by remember { mutableStateOf(false) }
+
+    var scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         viewModel.loadPath()
-        viewModel.startAutoRefresh()
     }
 
-    LaunchedEffect(viewModel.path.value) {
-        if (viewModel.path.value != null) {
-            navController.navigate("path_active") {
-                popUpTo("path_setup") { inclusive = true }
-            }
+    LaunchedEffect(fromQuery) {
+        if (fromQuery.isNotEmpty() && fromQuery.length >= 3) {
+            delay(400)
+            val results = viewModel.searchPlaces(fromQuery)
+            fromSuggestions = results
+        } else {
+            fromSuggestions = emptyList()
+        }
+    }
+
+    LaunchedEffect(toQuery) {
+        if (toQuery.isNotEmpty() && toQuery.length >= 3) {
+            delay(400)
+            val results = viewModel.searchPlaces(toQuery)
+            toSuggestions = results
+        } else {
+            toSuggestions = emptyList()
         }
     }
 
     Scaffold(
-        containerColor = BackgroundColor,
         topBar = {
             TopAppBar(
-                title = { Text("Set Path", fontWeight = FontWeight.Bold) },
+                title = { Text("🗺️ Path") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundColor)
+                actions = {
+                    if (isPathActive) {
+                        TextButton(
+                            onClick = {
+                                viewModel.deactivatePath()
+                            },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = Error
+                            )
+                        ) {
+                            Text("End Path")
+                        }
+                    }
+                }
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Map Placeholder
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(0.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Canvas(modifier = Modifier.fillMaxSize().background(Color(0xFFF4F6F5))) {
-                            val dotSpacing = 16.dp.toPx()
-                            for (x in 0..size.width.toInt() step dotSpacing.toInt()) {
-                                for (y in 0..size.height.toInt() step dotSpacing.toInt()) {
-                                    drawCircle(color = Color(0xFFE0E0E0), radius = 2.5f, center = Offset(x.toFloat(), y.toFloat()))
-                                }
-                            }
-                            
-                            val startX = size.width * 0.25f
-                            val startY = size.height * 0.75f
-                            val endX = size.width * 0.75f
-                            val endY = size.height * 0.25f
-                            
-                            drawLine(
-                                color = PrimaryColor.copy(alpha = 0.6f),
-                                start = Offset(startX, startY),
-                                end = Offset(endX, endY),
-                                strokeWidth = 12f,
-                                cap = androidx.compose.ui.graphics.StrokeCap.Round
+        if (isLoading && path == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (isPathActive && path != null) {
+            Column(modifier = Modifier.padding(padding)) {
+                PathActiveScreen(
+                    path = path!!,
+                    tasks = tasks,
+                    viewModel = viewModel,
+                    navController = navController
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Description
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = TrustColor.copy(alpha = 0.08f)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                "🚀 Earn on your commute!",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TrustColor
                             )
-                            
-                            drawCircle(color = Color.White, radius = 20f, center = Offset(startX, startY))
-                            drawCircle(color = Color.Black, radius = 10f, center = Offset(startX, startY))
-                            
-                            drawCircle(color = Color.White, radius = 20f, center = Offset(endX, endY))
-                            drawCircle(color = PrimaryColor, radius = 10f, center = Offset(endX, endY))
-                        }
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(12.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color.White.copy(alpha = 0.9f))
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Text("Route Planner", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(
+                                "Set your route and find tasks along the way.",
+                                fontSize = 12.sp,
+                                color = Muted
+                            )
                         }
                     }
                 }
-            }
 
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        // From
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.RadioButtonChecked, contentDescription = null, modifier = Modifier.size(20.dp), tint = TextColor)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("From", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextColor)
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = fromLocation,
-                            onValueChange = { fromLocation = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            trailingIcon = {
-                                Icon(Icons.Outlined.Explore, contentDescription = null)
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                focusedBorderColor = PrimaryColor
-                            )
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // To
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.LocationOn, contentDescription = null, modifier = Modifier.size(20.dp), tint = TextColor)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("To", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextColor)
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = toLocation,
-                            onValueChange = { toLocation = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                focusedBorderColor = PrimaryColor
-                            )
-                        )
+                // From Location
+                item {
+                    LocationAutocompleteField(
+                        label = "From *",
+                        query = fromQuery,
+                        onQueryChange = { fromQuery = it; selectedFrom = null },
+                        suggestions = fromSuggestions,
+                        onSuggestionSelected = { result ->
+                            selectedFrom = result
+                            fromQuery = result.display_name
+                            fromSuggestions = emptyList()
+                        },
+                        placeholder = "Koramangala, Bangalore"
+                    )
+                }
 
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Divider(color = CardOutlineColor)
-                        Spacer(modifier = Modifier.height(24.dp))
+                // To Location
+                item {
+                    LocationAutocompleteField(
+                        label = "To *",
+                        query = toQuery,
+                        onQueryChange = { toQuery = it; selectedTo = null },
+                        suggestions = toSuggestions,
+                        onSuggestionSelected = { result ->
+                            selectedTo = result
+                            toQuery = result.display_name
+                            toSuggestions = emptyList()
+                        },
+                        placeholder = "Whitefield, Bangalore"
+                    )
+                }
 
-                        // Radius
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Outlined.Explore, contentDescription = null, modifier = Modifier.size(20.dp), tint = TextColor)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Search Radius", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                            }
-                            Text(
-                                text = "${"%.1f".format(radiusKm)} km",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Slider(
-                            value = radiusKm,
-                            onValueChange = { radiusKm = it },
-                            valueRange = 0.5f..5.0f,
-                            steps = 9,
-                            colors = SliderDefaults.colors(
-                                thumbColor = PrimaryColor,
-                                activeTrackColor = PrimaryColor,
-                                inactiveTrackColor = CardOutlineColor
-                            )
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("0.5 km", fontSize = 12.sp, color = MutedText)
-                            Text("5.0 km", fontSize = 12.sp, color = MutedText)
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Recurring
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = CardDefaults.cardColors(containerColor = BackgroundColor),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                        ) {
+                // Radius Slider
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Hairline),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Outlined.History, contentDescription = null, modifier = Modifier.size(24.dp))
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text("Recurring Path (daily)", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                                        Text(
-                                            "Keep this route active every day.",
-                                            fontSize = 13.sp,
-                                            color = MutedText
-                                        )
-                                    }
-                                }
-                                Switch(
-                                    checked = recurring,
-                                    onCheckedChange = { recurring = it },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = PrimaryColor,
-                                        uncheckedThumbColor = Color.White,
-                                        uncheckedTrackColor = Color(0xFFD1D1D1)
-                                    )
+                                Text(
+                                    "📏 Detour Radius",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
+                                Text(
+                                    "${"%.1f".format(radiusKm)} km",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryDark
+                                )
+                            }
+                            Slider(
+                                value = radiusKm,
+                                onValueChange = { radiusKm = it },
+                                valueRange = 0.5f..5f,
+                                steps = 8,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = PrimaryDark,
+                                    activeTrackColor = PrimaryDark
+                                )
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("0.5 km", fontSize = 11.sp, color = Muted)
+                                Text("5.0 km", fontSize = 11.sp, color = Muted)
                             }
                         }
                     }
                 }
-            }
 
-            item {
-                Button(
-                    onClick = {
-                        if (fromLocation.isNotEmpty() && toLocation.isNotEmpty()) {
-                            viewModel.setPath(
-                                fromLocation, fromLat, fromLng,
-                                toLocation, toLat, toLng,
-                                radiusKm.toDouble(), recurring
+                // Recurring Toggle
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Hairline),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    "🔄 Recurring Path",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    "Repeat daily for your commute",
+                                    fontSize = 11.sp,
+                                    color = Muted
+                                )
+                            }
+                            Switch(
+                                checked = recurring,
+                                onCheckedChange = { recurring = it }
                             )
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    enabled = !isLoading && fromLocation.isNotEmpty() && toLocation.isNotEmpty(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = PrimaryColor
-                    )
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(Icons.Outlined.Explore, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Find Tasks Along My Route", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
-            }
-            
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = BlueBg),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBBE4FF))
-                ) {
-                    Row(
+
+                // Error
+                if (error != null) {
+                    item {
+                        Text(error ?: "", color = Error)
+                    }
+                }
+
+                // Find Tasks Button
+                item {
+                    Button(
+                        onClick = {
+                            if (selectedFrom != null && selectedTo != null) {
+                                viewModel.setPath(
+                                    fromLocation = selectedFrom!!.display_name,
+                                    fromLat = selectedFrom!!.lat.toDouble(),
+                                    fromLng = selectedFrom!!.lon.toDouble(),
+                                    toLocation = selectedTo!!.display_name,
+                                    toLat = selectedTo!!.lat.toDouble(),
+                                    toLng = selectedTo!!.lon.toDouble(),
+                                    radiusKm = radiusKm.toDouble(),
+                                    recurring = recurring
+                                ) { matched ->
+                                    showMap = true
+                                }
+                            }
+                        },
+                        enabled = !isLoading && selectedFrom != null && selectedTo != null,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF0077B6), modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Path expires in 24 hours. You'll be notified of tasks along your route.",
-                            fontSize = 14.sp,
-                            color = Color(0xFF005580)
+                            .height(52.dp),
+                        shape = RoundedCornerShape(26.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryDark
                         )
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("🗺️ Find Tasks Along My Route", color = MaterialTheme.colorScheme.onPrimary)
+                        }
                     }
                 }
             }
-            
-            item { Spacer(modifier = Modifier.height(32.dp)) }
         }
     }
 }

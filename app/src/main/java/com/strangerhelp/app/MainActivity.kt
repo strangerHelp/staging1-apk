@@ -22,23 +22,73 @@ import com.strangerhelp.app.ui.screens.LandingScreen
 import com.strangerhelp.app.ui.theme.StrangerHelpTheme
 import com.strangerhelp.app.utils.AppLogger
 import kotlinx.coroutines.launch
+import coil.ImageLoader
+import coil.decode.ImageSource
+import coil.decode.DataSource
+import coil.fetch.FetchResult
+import coil.fetch.Fetcher
+import coil.fetch.SourceResult
+import coil.request.Options
+import android.net.Uri
+import android.util.Base64
+import java.io.ByteArrayInputStream
+import okio.buffer
+import okio.source
+import coil.Coil
+
+class DataUriFetcher(
+    private val data: Uri,
+    private val options: Options
+) : Fetcher {
+    override suspend fun fetch(): FetchResult {
+        val base64 = data.toString().substringAfter("base64,")
+        val bytes = Base64.decode(base64, Base64.DEFAULT)
+        val mimeType = data.toString().substringAfter("data:").substringBefore(";")
+
+        return SourceResult(
+            source = ImageSource(
+                ByteArrayInputStream(bytes).source().buffer(),
+                options.context
+            ),
+            mimeType = mimeType,
+            dataSource = coil.decode.DataSource.MEMORY
+        )
+    }
+
+    class Factory : Fetcher.Factory<Uri> {
+        override fun create(
+            data: Uri,
+            options: Options,
+            loader: ImageLoader
+        ): Fetcher? {
+            return if (data.scheme == "data") {
+                DataUriFetcher(data, options)
+            } else null
+        }
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        val imageLoader = ImageLoader.Builder(this)
+            .components {
+                add(DataUriFetcher.Factory())
+            }
+            .build()
+        Coil.setImageLoader(imageLoader)
+
         try {
             ApiClient.init(this)
         } catch (e: Exception) {
             AppLogger.e("MainActivity", "Failed to initialize ApiClient during app launch", e)
         }
         
-        enableEdgeToEdge()
-
         setContent {
             StrangerHelpTheme {
                 androidx.compose.material3.Surface(
-                    modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     var currentUser by remember { mutableStateOf<User?>(null) }
                     var isLoading by remember { mutableStateOf(true) }

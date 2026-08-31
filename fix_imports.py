@@ -1,16 +1,12 @@
-import os
+with open("app/src/main/java/com/strangerhelp/app/ui/screens/tasks/PosterComponents.kt", "r") as f:
+    content = f.read()
 
-files_to_fix = [
-    'app/src/main/java/com/strangerhelp/app/ui/screens/LandingScreen.kt',
-    'app/src/main/java/com/strangerhelp/app/ui/screens/path/PathActiveScreen.kt'
-]
+if "import com.strangerhelp.app.ui.theme.TrustColor" not in content:
+    content = content.replace("import com.strangerhelp.app.ui.theme.Warning", "import com.strangerhelp.app.ui.theme.Warning\nimport com.strangerhelp.app.ui.theme.TrustColor")
 
-for path in files_to_fix:
-    with open(path, 'r') as f:
-        content = f.read()
-    
-    if 'import androidx.compose.foundation.BorderStroke' not in content:
-        content = content.replace('import androidx.compose.runtime.*', 'import androidx.compose.runtime.*\nimport androidx.compose.foundation.BorderStroke')
-        with open(path, 'w') as f:
-            f.write(content)
-        print(f"Fixed {path}")
+if "import androidx.compose.material.icons.filled.Verified" not in content:
+    content = content.replace("import androidx.compose.material.icons.filled.Star", "import androidx.compose.material.icons.filled.Star\nimport androidx.compose.material.icons.filled.Verified")
+
+with open("app/src/main/java/com/strangerhelp/app/ui/screens/tasks/PosterComponents.kt", "w") as f:
+    f.write(content)
+

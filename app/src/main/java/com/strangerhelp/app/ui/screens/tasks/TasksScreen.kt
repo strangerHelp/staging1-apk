@@ -37,10 +37,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 val PrimaryDark = Color(0xFF171717)
 val AccentOrange = Color(0xFFF5A623) // From Warning/Images
 val CyanDeep = Color(0xFF29BC9B)
-val TrustColor = Color(0xFF2A9D8F)
-val ErrorColor = Color(0xFFEE0000)
-val SurfaceVariantColor = Color(0xFFFAFAFA)
-val MutedText = Color(0xFF888888)
+
+
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,8 +156,8 @@ fun TasksScreen(navController: NavController) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search tasks...", color = MutedText) },
-                    leadingIcon = { Icon(Icons.Default.Search, null, tint = MutedText) },
+                    placeholder = { Text("Search tasks...", color = androidx.compose.ui.graphics.Color(0xFF666666)) },
+                    leadingIcon = { Icon(Icons.Default.Search, null, tint = androidx.compose.ui.graphics.Color(0xFF666666)) },
                     modifier = Modifier.weight(1f).height(50.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryDark,
@@ -192,7 +192,7 @@ fun TasksScreen(navController: NavController) {
 
             // Location Banner
             Surface(
-                color = SurfaceVariantColor,
+                color = androidx.compose.ui.graphics.Color(0xFFF5F5F5),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -201,9 +201,9 @@ fun TasksScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = MutedText, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF666666), modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Tasks near ", fontSize = 14.sp, color = MutedText)
+                        Text("Tasks near ", fontSize = 14.sp, color = androidx.compose.ui.graphics.Color(0xFF666666))
                         Text(cityName, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = PrimaryDark)
                     }
                     Text("Change", color = Color(0xFF007AFF), fontSize = 14.sp, modifier = Modifier.clickable { })
@@ -245,7 +245,7 @@ fun TasksScreen(navController: NavController) {
                         Text("📭", fontSize = 48.sp)
                         Spacer(Modifier.height(16.dp))
                         Text("No tasks found", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = PrimaryDark)
-                        Text("Try adjusting your search", color = MutedText, fontSize = 14.sp)
+                        Text("Try adjusting your search", color = androidx.compose.ui.graphics.Color(0xFF666666), fontSize = 14.sp)
                         Spacer(Modifier.height(16.dp))
                         Button(onClick = { navController.navigate("post") }, colors = ButtonDefaults.buttonColors(containerColor = AccentOrange)) {
                             Text("Post a Task", color = Color.White)
@@ -294,12 +294,12 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     // Category Chip
                     Surface(
-                        color = SurfaceVariantColor,
+                        color = androidx.compose.ui.graphics.Color(0xFFF5F5F5),
                         shape = RoundedCornerShape(8.dp),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.Description, null, modifier = Modifier.size(12.dp), tint = MutedText)
+                            Icon(Icons.Outlined.Description, null, modifier = Modifier.size(12.dp), tint = androidx.compose.ui.graphics.Color(0xFF666666))
                             Spacer(Modifier.width(4.dp))
                             Text(task.category, fontSize = 12.sp, color = PrimaryDark)
                         }
@@ -307,13 +307,13 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                     
                     if (task.urgent == 1) {
                         Surface(
-                            color = ErrorColor.copy(alpha = 0.1f),
+                            color = androidx.compose.ui.graphics.Color(0xFFEE0000).copy(alpha = 0.1f),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Bolt, null, modifier = Modifier.size(12.dp), tint = ErrorColor)
+                                Icon(Icons.Default.Bolt, null, modifier = Modifier.size(12.dp), tint = androidx.compose.ui.graphics.Color(0xFFEE0000))
                                 Spacer(Modifier.width(2.dp))
-                                Text("Urgent", fontSize = 12.sp, color = ErrorColor, fontWeight = FontWeight.Medium)
+                                Text("Urgent", fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFFEE0000), fontWeight = FontWeight.Medium)
                             }
                         }
                     }
@@ -357,7 +357,7 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
             Text(
                 text = task.description.take(100) + if (task.description.length > 100) "..." else "",
                 fontSize = 14.sp,
-                color = MutedText,
+                color = androidx.compose.ui.graphics.Color(0xFF666666),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -366,15 +366,36 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
             
             // Location & Deadline
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(14.dp), tint = MutedText)
+                Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(14.dp), tint = androidx.compose.ui.graphics.Color(0xFF666666))
                 Spacer(Modifier.width(4.dp))
-                Text(task.location.split(",").firstOrNull() ?: task.location, fontSize = 12.sp, color = MutedText, maxLines = 1, modifier = Modifier.widthIn(max = 120.dp), overflow = TextOverflow.Ellipsis)
+                Text(task.location.split(",").firstOrNull() ?: task.location, fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFF666666), maxLines = 1, modifier = Modifier.widthIn(max = 120.dp), overflow = TextOverflow.Ellipsis)
                 
-                Text("  •  ", fontSize = 12.sp, color = MutedText)
+                Text("  •  ", fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFF666666))
                 
-                Icon(Icons.Outlined.Schedule, null, modifier = Modifier.size(14.dp), tint = MutedText)
+                Icon(Icons.Outlined.Schedule, null, modifier = Modifier.size(14.dp), tint = androidx.compose.ui.graphics.Color(0xFF666666))
                 Spacer(Modifier.width(4.dp))
-                Text(task.deadline, fontSize = 12.sp, color = MutedText)
+                Text(task.deadline, fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFF666666))
+            }
+            
+            // ⭐ Attachment Indicator
+            if (task.attachmentCount > 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.AttachFile,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = androidx.compose.ui.graphics.Color(0xFF666666)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${task.attachmentCount} file${if (task.attachmentCount > 1) "s" else ""}",
+                        fontSize = 11.sp,
+                        color = androidx.compose.ui.graphics.Color(0xFF666666)
+                    )
+                }
             }
             
             Divider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outline)
@@ -395,7 +416,7 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                         modifier = Modifier
                             .size(20.dp)
                             .clip(CircleShape)
-                            .background(SurfaceVariantColor),
+                            .background(androidx.compose.ui.graphics.Color(0xFFF5F5F5)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -421,7 +442,7 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                         Text(
                             text = " ✓",
                             fontSize = 10.sp,
-                            color = TrustColor
+                            color = androidx.compose.ui.graphics.Color(0xFF10B981)
                         )
                     }
                 }
@@ -430,7 +451,7 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                 Text(
                     text = com.strangerhelp.app.utils.TimeUtils.getTimeAgo(task.createdAt),
                     fontSize = 10.sp,
-                    color = MutedText,
+                    color = androidx.compose.ui.graphics.Color(0xFF666666),
                     modifier = Modifier.padding(end = 8.dp)
                 )
 
@@ -439,7 +460,7 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                     "open" -> PrimaryDark
                     "claimed" -> AccentOrange
                     "completed" -> CyanDeep
-                    else -> MutedText
+                    else -> androidx.compose.ui.graphics.Color(0xFF666666)
                 }
                 Text(task.status.capitalize(), color = statusColor, fontSize = 12.sp)
             }

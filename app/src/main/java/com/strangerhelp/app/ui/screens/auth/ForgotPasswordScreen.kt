@@ -166,8 +166,6 @@ fun ForgotPasswordScreen(navController: NavController) {
                                 val errorStr = res.errorBody()?.string() ?: ""
                                 error = if (res.code() == 429) {
                                     "Too many requests. Please wait before trying again."
-                                } else if (errorStr.contains("not found", ignoreCase = true) || res.code() == 404) {
-                                    "Email not found. Please check and try again."
                                 } else {
                                     "Failed to send reset link. Please try again."
                                 }

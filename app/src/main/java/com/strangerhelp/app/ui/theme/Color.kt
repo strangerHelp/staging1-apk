@@ -25,3 +25,6 @@ val DarkSurface = Color(0xFF1A1A1A)
 val DarkBackground = Color(0xFF121212)
 val DarkOnSurface = Color(0xFFF2F2F2)
 val DarkVariant = Color(0xFF2A2A2A)
+
+val PrimaryDark = Color(0xFF0B121E)
+val TrustColor = Color(0xFF2A9D8F)
