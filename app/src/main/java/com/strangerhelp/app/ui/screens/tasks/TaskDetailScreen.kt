@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +56,7 @@ fun TaskDetailScreen(
     taskId: String,
     viewModel: TaskDetailViewModel = viewModel(factory = TaskDetailViewModelFactory())
 ) {
+    val reviewViewModel: ReviewViewModel = viewModel { ReviewViewModel() }
     val task by viewModel.task.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -229,6 +231,40 @@ fun TaskDetailScreen(
 
                     // 10. Payment Notice
                     item { PaymentNotice(t.budget) }
+
+                    if (t.status == "completed") {
+                        val isParticipant = currentUser?.id == t.posterId || currentUser?.id == t.claimedBy
+
+                        if (isParticipant && currentUser != null) {
+                            item {
+                                RatingComponent(
+                                    task = t,
+                                    viewModel = reviewViewModel
+                                )
+                            }
+                        }
+
+                        item {
+                            val reviews by reviewViewModel.taskReviews.collectAsStateWithLifecycle()
+                            LaunchedEffect(Unit) {
+                                reviewViewModel.loadTaskReviews(t._id)
+                            }
+
+                            if (reviews?.reviews?.isNotEmpty() == true) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "📋 Existing Reviews (${reviews?.totalReviews ?: 0})",
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                        fontSize = 14.sp
+                                    )
+                                    ReviewList(reviews = reviews?.reviews ?: emptyList())
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -286,18 +322,7 @@ fun TaskDetailScreen(
                 )
             }
             
-            if (showReviewDialog) {
-                ReviewDialog(
-                    onDismiss = { showReviewDialog = false },
-                    onConfirm = { rating, comment ->
-                        task?.let {
-                            val revieweeId = if (currentUser?.id == it.posterId) it.claimedBy ?: "" else it.posterId
-                            viewModel.submitReview(it._id, revieweeId, rating, comment)
-                        }
-                        showReviewDialog = false
-                    }
-                )
-            }
+
 
             
         }

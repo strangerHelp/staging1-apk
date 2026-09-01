@@ -11,10 +11,10 @@ class NotificationRepository(private val api: StrangerHelpApi) {
     }
     
     suspend fun markAsRead(id: String): Response<GenericResponse> {
-        return api.markAsRead(id)
+        return api.markAsRead(id, emptyMap<String, Any>())
     }
     
     suspend fun markAllAsRead(): Response<GenericResponse> {
-        return api.markAllAsRead()
+        return api.markAllAsRead(emptyMap<String, Any>())
     }
 }

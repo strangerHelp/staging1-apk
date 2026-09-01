@@ -179,10 +179,7 @@ fun TaskActionSection(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = onReview, modifier = Modifier.fillMaxWidth().height(52.dp), colors = ButtonDefaults.buttonColors(containerColor = AccentOrange)) {
-                    Text("⭐ Leave a Review")
-                }
-                Spacer(Modifier.height(16.dp))
+
                 ProofGallery(proof = task.completionProof, canReview = false)
             }
             TaskUiState.POSTER_WAITING -> {
@@ -343,13 +340,7 @@ fun TaskActionSection(
                 Spacer(Modifier.height(16.dp))
                 ProofGallery(proof = task.completionProof, canReview = false)
                 Spacer(Modifier.height(16.dp))
-                PosterReviewSection(
-                    task = task,
-                    onReviewSubmit = { rating, comment ->
-                        viewModel.submitReview(task._id, task.claimedBy ?: "", rating, comment)
-                    }
-                )
-                Spacer(Modifier.height(16.dp))
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3CD)),

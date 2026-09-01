@@ -441,19 +441,6 @@ class TaskDetailViewModel(
     }
 
 
-        fun submitReview(taskId: String, revieweeId: String, rating: Int, comment: String) {
-        viewModelScope.launch {
-            try {
-                val body = mapOf("taskId" to taskId, "revieweeId" to revieweeId, "rating" to rating, "comment" to comment)
-                val response = ApiClient.api.postReview(body)
-                if (!response.isSuccessful) {
-                    _error.value = parseError(response.errorBody()?.string())
-                }
-            } catch (e: Exception) {
-                _error.value = "Failed to submit review"
-            }
-        }
-    }
 
     private fun parseError(errorBody: String?): String {
         if (errorBody == null) return "Something went wrong"

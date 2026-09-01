@@ -1,5 +1,10 @@
 package com.strangerhelp.app
 
+import com.google.firebase.messaging.FirebaseMessaging
+import android.os.Build
+import android.Manifest
+import android.content.Intent
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -71,6 +76,24 @@ class DataUriFetcher(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 100)
+        }
+        
+        try {
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val token = task.result
+                    com.strangerhelp.app.utils.AppLogger.d("FCM", "Token: $token")
+                }
+            }
+        } catch (e: Exception) {}
+        
+        intent?.getStringExtra("deep_link")?.let { link ->
+            // In a real app we would pass this to the Compose navigator
+            com.strangerhelp.app.utils.AppLogger.d("FCM", "Deep link: $link")
+        }
         
         val imageLoader = ImageLoader.Builder(this)
             .components {

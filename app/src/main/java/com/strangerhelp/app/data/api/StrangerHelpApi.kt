@@ -65,6 +65,9 @@ interface StrangerHelpApi {
         @Query("urgent") urgent: String? = null,
         @Query("maxDistance") maxDistance: Int? = null,
     ): Response<List<Task>>
+
+    @GET("api/tasks")
+    suspend fun getTasksWithQueryMap(@QueryMap queryMap: Map<String, String>): Response<List<Task>>
     
     @GET("api/tasks/{id}")
     suspend fun getTask(@Path("id") id: String, @Query("invite") inviteCode: String? = null): Response<Task>
@@ -114,10 +117,10 @@ interface StrangerHelpApi {
     suspend fun getNotifications(): Response<NotificationResponse>
 
     @PATCH("api/notifications/{id}/read")
-    suspend fun markAsRead(@Path("id") id: String): Response<com.strangerhelp.app.data.model.GenericResponse>
+    suspend fun markAsRead(@Path("id") id: String, @Body body: Any): Response<com.strangerhelp.app.data.model.GenericResponse>
 
     @PATCH("api/notifications/read-all")
-    suspend fun markAllAsRead(): Response<com.strangerhelp.app.data.model.GenericResponse>
+    suspend fun markAllAsRead(@Body body: Any): Response<com.strangerhelp.app.data.model.GenericResponse>
 
     
     // Meets
@@ -156,7 +159,13 @@ interface StrangerHelpApi {
 
     // Reviews
     @POST("api/reviews")
-    suspend fun postReview(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<com.strangerhelp.app.data.model.GenericResponse>
+    suspend fun submitReview(@Body request: com.strangerhelp.app.data.model.SubmitReviewRequest): Response<com.google.gson.JsonObject>
+
+    @GET("api/reviews")
+    suspend fun getReviewsByUser(@Query("userId") userId: String): Response<com.strangerhelp.app.data.model.ReviewsResponse>
+
+    @GET("api/reviews")
+    suspend fun getReviewsByTask(@Query("taskId") taskId: String): Response<com.strangerhelp.app.data.model.ReviewsResponse>
 
     @GET("api/support")
     suspend fun getSupportMessages(): Response<com.strangerhelp.app.data.model.SupportResponse>

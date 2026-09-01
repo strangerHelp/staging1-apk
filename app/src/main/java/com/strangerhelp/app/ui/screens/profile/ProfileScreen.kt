@@ -37,6 +37,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.strangerhelp.app.data.model.User
 import com.strangerhelp.app.ui.theme.*
+import com.strangerhelp.app.ui.screens.tasks.ProfileRating
 import com.strangerhelp.app.ui.components.EmailVerificationBanner
 import com.strangerhelp.app.ui.screens.profile.AuthViewModel
 
@@ -183,6 +184,10 @@ fun ProfileScreen(
                                 .background(Color(0xFF004D40))
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    if (user != null) {
+                        ProfileRating(rating = user?.rating ?: 0.0, totalReviews = user?.totalReviews ?: 0)
                     }
                     Spacer(Modifier.height(24.dp))
                     OutlinedButton(

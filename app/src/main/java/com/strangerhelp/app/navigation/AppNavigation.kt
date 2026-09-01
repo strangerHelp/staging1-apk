@@ -139,6 +139,19 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
             NavHost(navController, startDestination = Screen.Feed.route, Modifier.padding(padding)) {
                 composable(Screen.Feed.route) { FeedScreen(navController, user) }
                 composable(Screen.Tasks.route) { TasksScreen(navController) }
+                composable(
+                    route = "my_tasks?filter={filter}",
+                    arguments = listOf(navArgument("filter") { type = NavType.StringType; defaultValue = "all" })
+                ) { backStackEntry ->
+                    val filter = backStackEntry.arguments?.getString("filter") ?: "all"
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val myTasksViewModel: com.strangerhelp.app.ui.screens.tasks.MyTasksViewModel = viewModel(
+                        factory = com.strangerhelp.app.ui.screens.tasks.MyTasksViewModelFactory(
+                            com.strangerhelp.app.data.repository.TaskRepository(com.strangerhelp.app.data.api.ApiClient.api)
+                        )
+                    )
+                    com.strangerhelp.app.ui.screens.tasks.MyTasksScreen(filter = filter, navController = navController, viewModel = myTasksViewModel)
+                }
                 composable(Screen.Post.route) { PostTaskScreen(navController) }
                 composable(Screen.Chat.route) { ChatListScreen(viewModel = chatViewModel, navController = navController) }
                 composable("support") { com.strangerhelp.app.ui.screens.chat.SupportChatScreen(navController = navController) }

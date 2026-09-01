@@ -34,6 +34,10 @@ class NotificationViewModel(
 
     private var pollJob: Job? = null
 
+    init {
+        startPolling()
+    }
+
     // ⭐ Load notifications
     fun loadNotifications() {
         viewModelScope.launch {
@@ -71,7 +75,7 @@ class NotificationViewModel(
                     _unreadCount.value = maxOf(0, _unreadCount.value - 1)
                 }
             } catch (e: Exception) {
-                // Ignore error
+                android.util.Log.e("NotificationVM", "Error marking all as read", e)
             }
         }
     }
@@ -85,7 +89,7 @@ class NotificationViewModel(
                     loadNotifications()
                 }
             } catch (e: Exception) {
-                // Ignore error
+                android.util.Log.e("NotificationVM", "Error marking all as read", e)
             }
         }
     }

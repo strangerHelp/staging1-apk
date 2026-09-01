@@ -12,6 +12,17 @@ import retrofit2.Response
 import java.io.File
 
 class TaskRepository(private val api: StrangerHelpApi) {
+    suspend fun getMyTasks(filter: String = "all"): Response<List<Task>> {
+        val queryMap = mutableMapOf(
+            "mine" to "true",
+            "limit" to "50"
+        )
+        if (filter != "all") {
+            queryMap["role"] = filter
+        }
+        return api.getTasksWithQueryMap(queryMap)
+    }
+
     suspend fun claimTask(taskId: String, offeredBudget: Int?, message: String?): Response<ClaimResponse> {
         val request = ClaimTaskRequest(action = "claim", offeredBudget = offeredBudget, message = message)
         return api.claimTask(taskId, request)

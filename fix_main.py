@@ -1,13 +1,16 @@
-with open("app/src/main/java/com/strangerhelp/app/MainActivity.kt", "r") as f:
+import re
+
+file_path = "app/src/main/java/com/strangerhelp/app/MainActivity.kt"
+with open(file_path, "r") as f:
     content = f.read()
 
-# Remove enableEdgeToEdge()
-content = content.replace("        enableEdgeToEdge()\n", "")
+# Remove the broken imports from the middle of the file
+bad_imports = "import com.google.firebase.messaging.FirebaseMessaging\nimport android.os.Build\nimport android.Manifest\nimport android.content.Intent\nclass MainActivity"
+content = content.replace(bad_imports, "class MainActivity")
 
-# We can also remove windowInsetsPadding(WindowInsets.statusBars) since it's not edge-to-edge anymore,
-# but it's okay to leave it, though maybe it will add double padding?
-# Let's remove .windowInsetsPadding(WindowInsets.statusBars)
-content = content.replace(".windowInsetsPadding(WindowInsets.statusBars)", "")
+# Add them to the top of the file (after package declaration)
+good_imports = "import com.google.firebase.messaging.FirebaseMessaging\nimport android.os.Build\nimport android.Manifest\nimport android.content.Intent\n"
+content = content.replace("package com.strangerhelp.app\n", "package com.strangerhelp.app\n\n" + good_imports)
 
-with open("app/src/main/java/com/strangerhelp/app/MainActivity.kt", "w") as f:
+with open(file_path, "w") as f:
     f.write(content)

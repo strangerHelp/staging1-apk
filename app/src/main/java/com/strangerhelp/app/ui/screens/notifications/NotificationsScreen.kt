@@ -75,20 +75,11 @@ fun NotificationsScreen(
                     .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("🔔", fontSize = 48.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "No notifications yet",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "We'll notify you when something happens",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                com.strangerhelp.app.ui.components.EmptyState(
+                    icon = "🔔",
+                    title = "No notifications yet",
+                    message = "We'll notify you when something happens"
+                )
             }
         } else {
             LazyColumn(

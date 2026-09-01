@@ -43,6 +43,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.strangerhelp.app.data.model.Task
+import com.strangerhelp.app.ui.components.TaskCardSkeleton
+import com.strangerhelp.app.ui.components.EmptyState
 import com.strangerhelp.app.data.model.User
 
 val PrimaryText = Color(0xFF000000)
@@ -111,7 +113,14 @@ fun FeedScreen(
             }
 
             item {
-                StatsRow(stats = stats, city = user?.city ?: "Ban")
+                StatsRow(
+                    stats = stats, 
+                    city = user?.city ?: "Ban",
+                    onPostedClick = { navController.navigate("my_tasks?filter=posted") },
+                    onClaimedClick = { navController.navigate("my_tasks?filter=claimed") },
+                    onCompletedClick = { navController.navigate("my_tasks?filter=completed") },
+                    onCityClick = { navController.navigate("edit_profile") }
+                )
             }
 
             item {
@@ -215,24 +224,31 @@ fun HomeHeader(user: User?, unreadCount: Int, onNotificationClick: () -> Unit) {
 }
 
 @Composable
-fun StatsRow(stats: UserStats, city: String) {
+fun StatsRow(
+    stats: UserStats, 
+    city: String,
+    onPostedClick: () -> Unit = {},
+    onClaimedClick: () -> Unit = {},
+    onCompletedClick: () -> Unit = {},
+    onCityClick: () -> Unit = {}
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        StatCard(icon = Icons.Outlined.AddCircleOutline, iconTint = Color(0xFF8B5A2B), value = stats.tasksPosted.toString(), label = "Posted")
-        StatCard(icon = Icons.Outlined.CheckBox, iconTint = Color(0xFFFF9800), value = stats.tasksClaimed.toString(), label = "Claimed")
-        StatCard(icon = Icons.Outlined.CheckCircle, iconTint = PrimaryText, value = stats.tasksCompleted.toString(), label = "Done")
-        StatCard(icon = Icons.Outlined.LocationCity, iconTint = PrimaryText, value = city.take(3), label = "City")
+        StatCard(icon = Icons.Outlined.AddCircleOutline, iconTint = Color(0xFF8B5A2B), value = stats.tasksPosted.toString(), label = "Posted", onClick = onPostedClick)
+        StatCard(icon = Icons.Outlined.CheckBox, iconTint = Color(0xFFFF9800), value = stats.tasksClaimed.toString(), label = "Claimed", onClick = onClaimedClick)
+        StatCard(icon = Icons.Outlined.CheckCircle, iconTint = PrimaryText, value = stats.tasksCompleted.toString(), label = "Done", onClick = onCompletedClick)
+        StatCard(icon = Icons.Outlined.LocationCity, iconTint = PrimaryText, value = city.take(3), label = "City", onClick = onCityClick)
     }
 }
 
 @Composable
-fun RowScope.StatCard(icon: ImageVector, iconTint: Color, value: String, label: String) {
+fun RowScope.StatCard(icon: ImageVector, iconTint: Color, value: String, label: String, onClick: () -> Unit = {}) {
     Card(
-        modifier = Modifier.animateContentSize().weight(1f),
+        modifier = Modifier.animateContentSize().weight(1f).clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.elevatedCardElevation(0.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -507,7 +523,9 @@ fun RecentTasksSection(tasks: List<Task>, isLoading: Boolean, onTaskClick: (Stri
         }
 
         if (isLoading) {
-            Text("Loading...", color = MutedText, fontSize = 14.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(3) { TaskCardSkeleton() }
+            }
         } else {
             val displayTasks = if (tasks.isEmpty()) {
                 listOf(

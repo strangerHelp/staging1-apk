@@ -31,6 +31,9 @@ data class User(
     val handle: String = "",
     val banned: Int = 0,
     val is_admin: Int = 0,
+    val rating: Double = 0.0,
+    val totalReviews: Int = 0,
+    val trustScore: Int = 0
 )
 
 @Entity(tableName = "tasks")
@@ -212,4 +215,28 @@ data class UserStats(
     val totalReviews: Int = 0,
     val completionRate: Int = 0,
     val trustScore: Int = 0
+)
+
+data class Review(
+    val id: String,
+    @com.google.gson.annotations.SerializedName("task_id") val taskId: String,
+    @com.google.gson.annotations.SerializedName("reviewer_id") val reviewerId: String,
+    @com.google.gson.annotations.SerializedName("reviewer_name") val reviewerName: String,
+    @com.google.gson.annotations.SerializedName("reviewee_id") val revieweeId: String,
+    val rating: Int,                 // 1..5
+    val comment: String,
+    @com.google.gson.annotations.SerializedName("created_at") val createdAt: String
+)
+
+data class ReviewsResponse(
+    val reviews: List<Review>,
+    @com.google.gson.annotations.SerializedName("avgRating") val avgRating: Double,
+    @com.google.gson.annotations.SerializedName("totalReviews") val totalReviews: Int
+)
+
+data class SubmitReviewRequest(
+    @com.google.gson.annotations.SerializedName("taskId") val taskId: String,
+    @com.google.gson.annotations.SerializedName("revieweeId") val revieweeId: String,
+    val rating: Int,
+    val comment: String
 )
