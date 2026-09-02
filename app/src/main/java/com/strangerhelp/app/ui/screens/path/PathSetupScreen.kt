@@ -23,7 +23,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun PathSetupScreen(
     navController: NavController,
-    viewModel: PathViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    viewModel: PathViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = PathViewModelFactory())
 ) {
     val context = LocalContext.current
     val path by viewModel.path.collectAsState()

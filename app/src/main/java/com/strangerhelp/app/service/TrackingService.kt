@@ -10,6 +10,7 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import com.strangerhelp.app.R
+import com.strangerhelp.app.utils.BatteryMonitor
 import com.strangerhelp.app.MainActivity
 import com.strangerhelp.app.data.api.ApiClient
 import kotlinx.coroutines.CoroutineScope
@@ -74,23 +75,32 @@ class TrackingService : Service() {
             buildNotification("Sharing your location for a task")
         )
 
-        val locationRequest = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            15000L // 15 seconds
-        )
-            .setMinUpdateIntervalMillis(10000L) // 10 seconds minimum
-            .setMinUpdateDistanceMeters(50f) // 50 meters
-            .build()
+        scope.launch(Dispatchers.Main) {
+            BatteryMonitor.isBatterySaverMode.collect { isBatterySaver ->
+                fusedClient.removeLocationUpdates(locationCallback)
+                
+                val interval = if (isBatterySaver) 60000L else 15000L
+                val minInterval = if (isBatterySaver) 30000L else 10000L
+                val minDistance = if (isBatterySaver) 100f else 50f
+                
+                val locationRequest = LocationRequest.Builder(
+                    Priority.PRIORITY_HIGH_ACCURACY,
+                    interval
+                )
+                    .setMinUpdateIntervalMillis(minInterval)
+                    .setMinUpdateDistanceMeters(minDistance)
+                    .build()
 
-        try {
-            fusedClient.requestLocationUpdates(
-                locationRequest,
-                locationCallback,
-                Looper.getMainLooper()
-            )
-        } catch (e: SecurityException) {
-            // Location permission revoked mid-tracking
-            stopSelf()
+                try {
+                    fusedClient.requestLocationUpdates(
+                        locationRequest,
+                        locationCallback,
+                        Looper.getMainLooper()
+                    )
+                } catch (e: SecurityException) {
+                    stopSelf()
+                }
+            }
         }
 
         return START_STICKY

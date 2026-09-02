@@ -39,7 +39,7 @@ fun MeetsListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Stranger Meets") },
+                title = { Text("Strangers Meet") },
                 actions = {
                     IconButton(onClick = { navController.navigate("create_meet") }) {
                         Icon(Icons.Default.Add, "Create Meet")

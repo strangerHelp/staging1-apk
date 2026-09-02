@@ -76,11 +76,26 @@ fun PulseScreen(navController: NavController) {
     val isBatterySaver by BatteryMonitor.isBatterySaverMode.collectAsStateWithLifecycle()
     
     // Simulating map refresh frequency adapting to battery state
+    var pins by remember {
+        mutableStateOf(List(15) {
+            MapPin(
+                location = LatLng(28.6139 + (Random.nextDouble() - 0.5) * 0.1, 77.2090 + (Random.nextDouble() - 0.5) * 0.1),
+                isHelper = Random.nextBoolean()
+            )
+        })
+    }
     LaunchedEffect(isBatterySaver) {
         while(true) {
             val delayMillis = if (isBatterySaver) 30000L else 10000L
             kotlinx.coroutines.delay(delayMillis)
-            // Simulated map data refresh...
+            
+            // Refresh map pins
+            pins = List(15) {
+                MapPin(
+                    location = LatLng(28.6139 + (Random.nextDouble() - 0.5) * 0.1, 77.2090 + (Random.nextDouble() - 0.5) * 0.1),
+                    isHelper = Random.nextBoolean()
+                )
+            }
         }
     }
     
@@ -88,14 +103,6 @@ fun PulseScreen(navController: NavController) {
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
     
     val centerPoint = LatLng(28.6139, 77.2090)
-    val pins = remember {
-        List(15) {
-            MapPin(
-                location = LatLng(28.6139 + (Random.nextDouble() - 0.5) * 0.1, 77.2090 + (Random.nextDouble() - 0.5) * 0.1),
-                isHelper = Random.nextBoolean()
-            )
-        }
-    }
 
     LaunchedEffect(Unit) {
         try {

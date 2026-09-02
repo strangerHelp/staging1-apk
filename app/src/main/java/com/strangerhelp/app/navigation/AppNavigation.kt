@@ -193,6 +193,7 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                 }
 
 
+                composable("meets") { com.strangerhelp.app.ui.screens.meets.MeetsListScreen(meetViewModel, navController) }
                 composable("path_setup") { PathSetupScreen(navController) }
                 composable("path_active") { PathSetupScreen(navController) }
 

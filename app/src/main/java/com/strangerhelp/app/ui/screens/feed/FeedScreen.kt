@@ -312,7 +312,7 @@ fun QuickActionsRow(onActionClick: (String) -> Unit) {
             QuickActionCard(
                 icon = Icons.Outlined.Groups,
                 iconTint = Color(0xFF8B5A2B),
-                label = "Community Meets",
+                label = "Strangers Meet",
                 bgColor = Color(0xFFFFF4E6),
                 textColor = Color(0xFF8B5A2B),
                 modifier = Modifier.weight(1f),

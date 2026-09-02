@@ -10,6 +10,7 @@ import com.strangerhelp.app.data.model.User
 import com.strangerhelp.app.data.model.ClaimResponse
 import com.strangerhelp.app.data.model.ClaimTaskRequest
 import com.strangerhelp.app.data.repository.AuthRepository
+import com.strangerhelp.app.utils.BatteryMonitor
 import com.strangerhelp.app.data.repository.TaskRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -185,7 +186,8 @@ class TaskDetailViewModel(
         pollJob?.cancel()
         pollJob = viewModelScope.launch {
             while (isActive) {
-                delay(5000)
+                val delayTime = if (BatteryMonitor.isBatterySaverMode.value) 15000L else 5000L
+                delay(delayTime)
                 _task.value?._id?.let { id ->
                     loadTask(id, isBackgroundSync = true)
                 }

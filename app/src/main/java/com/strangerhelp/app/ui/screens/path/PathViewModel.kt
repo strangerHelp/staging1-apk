@@ -160,8 +160,24 @@ class PathViewModel(
     }
 
     private fun parseUTC(timestamp: String): Date {
-        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
-        sdf.timeZone = TimeZone.getTimeZone("UTC")
-        return sdf.parse(timestamp) ?: Date()
+        return try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+            sdf.timeZone = TimeZone.getTimeZone("UTC")
+            sdf.parse(timestamp) ?: Date()
+        } catch (e: Exception) {
+            try {
+                val sdf2 = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+                sdf2.timeZone = TimeZone.getTimeZone("UTC")
+                sdf2.parse(timestamp) ?: Date()
+            } catch (e2: Exception) {
+                Date()
+            }
+        }
+    }
+}
+
+class PathViewModelFactory : androidx.lifecycle.ViewModelProvider.Factory {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        return PathViewModel() as T
     }
 }
