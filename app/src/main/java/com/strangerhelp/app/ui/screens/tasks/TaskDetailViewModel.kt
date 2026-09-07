@@ -365,14 +365,19 @@ class TaskDetailViewModel(
     fun editTask(taskId: String, updates: Map<String, Any>, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
-                val response = taskRepository.patchTask(taskId, updates) // Assuming updateTracking actually calls PATCH /api/tasks/{id} which can do edits if we just pass a map. Wait, let me check TaskRepository.
+                val payload = updates.toMutableMap()
+                payload["action"] = "edit"
+                val response = taskRepository.patchTask(taskId, payload)
                 if (response.isSuccessful) {
                     loadTask(taskId)
                     onResult(true)
                 } else {
+                    val errorBody = response.errorBody()?.string()
+                    _error.value = parseError(errorBody)
                     onResult(false)
                 }
             } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to edit task"
                 onResult(false)
             }
         }

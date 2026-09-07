@@ -9,7 +9,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.aistudio.strangerhelp.hxmpzq"
+        applicationId = "com.strangerhelp.app"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
