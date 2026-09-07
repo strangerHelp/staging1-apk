@@ -57,31 +57,7 @@ fun LandingScreen(onLoginClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Filled.LocationOn,
-                        contentDescription = "Logo",
-                        tint = DarkNavy,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Icon(
-                        imageVector = Icons.Outlined.Handshake,
-                        contentDescription = null,
-                        tint = OrangePrimary,
-                        modifier = Modifier.size(16.dp).padding(bottom = 4.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                androidx.compose.ui.text.buildAnnotatedString {
-                    withStyle(androidx.compose.ui.text.SpanStyle(color = DarkNavy, fontWeight = FontWeight.Bold, fontSize = 20.sp)) {
-                        append("stranger")
-                    }
-                    withStyle(androidx.compose.ui.text.SpanStyle(color = OrangePrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)) {
-                        append("help")
-                    }
-                }.let { text ->
-                    Text(text = text)
-                }
+                com.strangerhelp.app.ui.components.StrangerHelpHeader(logoSize = 40.dp, textSize = 28.sp)
             }
             TextButton(onClick = onLoginClick) {
                 Text("Login/Join", color = TextDark, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
@@ -360,21 +336,7 @@ fun LandingScreen(onLoginClick: () -> Unit) {
                 modifier = Modifier.padding(bottom = 24.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.LocationOn, contentDescription = "Logo", tint = DarkNavy, modifier = Modifier.size(24.dp))
-                        Icon(Icons.Outlined.Handshake, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(12.dp).padding(bottom = 2.dp))
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    androidx.compose.ui.text.buildAnnotatedString {
-                        withStyle(androidx.compose.ui.text.SpanStyle(color = DarkNavy, fontWeight = FontWeight.Bold, fontSize = 16.sp)) {
-                            append("stranger")
-                        }
-                        withStyle(androidx.compose.ui.text.SpanStyle(color = OrangePrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)) {
-                            append("help")
-                        }
-                    }.let { text ->
-                        Text(text = text)
-                    }
+                    com.strangerhelp.app.ui.components.StrangerHelpHeader(logoSize = 32.dp, textSize = 22.sp)
                 }
             }
             

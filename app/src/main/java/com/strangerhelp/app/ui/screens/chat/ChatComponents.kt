@@ -64,7 +64,7 @@ fun MessageBubble(
                     contentDescription = "Avatar",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    error = painterResource(R.drawable.ic_launcher_foreground)
+                    error = painterResource(R.drawable.ic_launcher_foreground_image)
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))

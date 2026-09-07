@@ -66,7 +66,7 @@ fun GpsCameraScreen(
     val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
 
     val logo = remember {
-        val drawable = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_strangerhelp_logo)
+        val drawable = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_logo_brand_image)
         if (drawable != null) {
             val bitmap = android.graphics.Bitmap.createBitmap(
                 drawable.intrinsicWidth.takeIf { it > 0 } ?: 100,

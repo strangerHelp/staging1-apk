@@ -169,7 +169,7 @@ class TrackingService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("📍 Sharing your location")
             .setContentText(message)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Using launcher since ic_location is missing probably
+            .setSmallIcon(R.drawable.ic_launcher_foreground_image) // Using launcher since ic_location is missing probably
             .setOngoing(true)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)

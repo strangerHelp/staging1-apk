@@ -23,26 +23,10 @@ fun StrangerHelpLogo(
     modifier: Modifier = Modifier,
     size: Dp = 96.dp
 ) {
-    Box(contentAlignment = Alignment.Center, modifier = modifier) {
-        Icon(
-            imageVector = Icons.Filled.LocationOn,
-            contentDescription = "Logo",
-            tint = Primary,
-            modifier = Modifier.size(size)
-        )
-        Box(
-            modifier = Modifier
-                .padding(bottom = size * 0.125f)
-                .size(size * 0.42f)
-                .background(Color.White, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Handshake,
-                contentDescription = null,
-                tint = Saffron,
-                modifier = Modifier.size(size * 0.32f)
-            )
-        }
-    }
+    Icon(
+        painter = androidx.compose.ui.res.painterResource(id = com.strangerhelp.app.R.drawable.ic_logo_brand_image),
+        contentDescription = "StrangerHelp Logo",
+        tint = Color.Unspecified, // Important: don't tint to preserve the original colors
+        modifier = modifier.size(size)
+    )
 }

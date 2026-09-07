@@ -1,19 +1,17 @@
 import urllib.request
 import re
 
-url_location = "https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/location_on/default/48px.svg"
-url_handshake = "https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/handshake/default/48px.svg"
+urls = {
+    "handshake_filled": "https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/handshake/materialsymbolsrounded/handshake_48px_fill.svg",
+    "location_on": "https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/location_on/materialsymbolsrounded/location_on_48px_fill.svg"
+}
 
-try:
-    with urllib.request.urlopen(url_location) as response:
-        html = response.read().decode()
-        print("Location: ", html)
-except Exception as e:
-    print(e)
-    
-try:
-    with urllib.request.urlopen(url_handshake) as response:
-        html = response.read().decode()
-        print("Handshake: ", html)
-except Exception as e:
-    print(e)
+for name, url in urls.items():
+    req = urllib.request.Request(url)
+    try:
+        with urllib.request.urlopen(req) as response:
+            svg = response.read().decode('utf-8')
+            print(f"--- {name} ---")
+            print(svg)
+    except Exception as e:
+        print(f"Failed to fetch {name}: {e}")
