@@ -206,4 +206,38 @@ interface StrangerHelpApi {
 
     
     
+
+    // ⭐ Questions
+    @GET("api/questions")
+    suspend fun getQuestions(
+        @QueryMap queries: Map<String, String>
+    ): Response<List<com.strangerhelp.app.data.model.Question>>
+
+    @GET("api/questions/{id}")
+    suspend fun getQuestion(
+        @Path("id") questionId: String
+    ): Response<com.strangerhelp.app.data.model.Question>
+
+    @POST("api/questions")
+    suspend fun postQuestion(
+        @Body body: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<com.google.gson.JsonObject>
+
+    @POST("api/questions/{id}")
+    suspend fun postAnswer(
+        @Path("id") questionId: String,
+        @Body body: Map<String, String>
+    ): Response<com.google.gson.JsonObject>
+
+    @POST("api/questions/{id}")
+    suspend fun voteAnswer(
+        @Path("id") questionId: String,
+        @Body body: Map<String, String>
+    ): Response<com.google.gson.JsonObject>
+
+    @DELETE("api/questions/{id}")
+    suspend fun deleteQuestion(
+        @Path("id") questionId: String
+    ): Response<com.google.gson.JsonObject>
+
 }

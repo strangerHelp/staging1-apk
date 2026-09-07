@@ -4,22 +4,36 @@ file_path = "app/src/main/java/com/strangerhelp/app/navigation/AppNavigation.kt"
 with open(file_path, "r") as f:
     content = f.read()
 
-new_route = """                composable(
-                    route = "my_tasks?filter={filter}",
-                    arguments = listOf(navArgument("filter") { type = NavType.StringType; defaultValue = "all" })
-                ) { backStackEntry ->
-                    val filter = backStackEntry.arguments?.getString("filter") ?: "all"
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    val myTasksViewModel: com.strangerhelp.app.ui.screens.tasks.MyTasksViewModel = viewModel(
-                        factory = com.strangerhelp.app.ui.screens.tasks.MyTasksViewModelFactory(
-                            com.strangerhelp.app.data.repository.TaskRepository(com.strangerhelp.app.data.api.ApiClient.create(context))
-                        )
-                    )
-                    com.strangerhelp.app.ui.screens.tasks.MyTasksScreen(filter = filter, navController = navController, viewModel = myTasksViewModel)
-                }"""
+# Add imports
+imports = """import com.strangerhelp.app.ui.screens.ask.AskListScreen
+import com.strangerhelp.app.ui.screens.ask.AskPostScreen
+import com.strangerhelp.app.ui.screens.ask.AskDetailScreen"""
 
-if "my_tasks?filter={filter}" not in content:
-    content = content.replace('composable(Screen.Tasks.route) { TasksScreen(navController) }', 'composable(Screen.Tasks.route) { TasksScreen(navController) }\n' + new_route)
+content = content.replace("import com.strangerhelp.app.ui.screens.feed.FeedScreen", imports + "\nimport com.strangerhelp.app.ui.screens.feed.FeedScreen")
+
+# Add routes
+routes = """
+                composable("ask") {
+                    AskListScreen(
+                        navController = navController
+                    )
+                }
+                composable("ask_post") {
+                    AskPostScreen(
+                        navController = navController
+                    )
+                }
+                composable("ask_detail/{questionId}") { backStackEntry ->
+                    val questionId = backStackEntry.arguments?.getString("questionId") ?: ""
+                    AskDetailScreen(
+                        questionId = questionId,
+                        navController = navController
+                    )
+                }
+"""
+
+content = content.replace("composable(Screen.Path.route) { ComingSoonScreen(\"Path\") }", 
+                          "composable(Screen.Path.route) { ComingSoonScreen(\"Path\") }\n" + routes)
 
 with open(file_path, "w") as f:
     f.write(content)

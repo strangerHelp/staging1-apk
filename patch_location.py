@@ -1,4 +1,10 @@
-package com.strangerhelp.app.ui.components
+import re
+
+file_path = "app/src/main/java/com/strangerhelp/app/ui/components/LocationPicker.kt"
+with open(file_path, "r") as f:
+    content = f.read()
+
+new_code = """package com.strangerhelp.app.ui.components
 
 import android.Manifest
 import androidx.compose.foundation.clickable
@@ -139,3 +145,7 @@ fun LocationPicker(
         }
     }
 }
+"""
+
+with open(file_path, "w") as f:
+    f.write(new_code)

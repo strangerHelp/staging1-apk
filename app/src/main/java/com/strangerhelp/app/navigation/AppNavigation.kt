@@ -36,6 +36,9 @@ import com.strangerhelp.app.ui.screens.chat.ChatDetailScreen
 import com.strangerhelp.app.ui.screens.legal.LegalScreen
 import com.strangerhelp.app.ui.screens.legal.LegalTexts
 import com.strangerhelp.app.ui.screens.chat.ChatListScreen
+import com.strangerhelp.app.ui.screens.ask.AskListScreen
+import com.strangerhelp.app.ui.screens.ask.AskPostScreen
+import com.strangerhelp.app.ui.screens.ask.AskDetailScreen
 import com.strangerhelp.app.ui.screens.feed.FeedScreen
 import com.strangerhelp.app.ui.screens.profile.VerifyIdScreen
 import com.strangerhelp.app.ui.screens.profile.ReferEarnScreen
@@ -61,7 +64,6 @@ import com.strangerhelp.app.ui.screens.tasks.TaskDetailScreen
 import com.strangerhelp.app.ui.screens.tasks.TasksScreen
 import com.strangerhelp.app.ui.screens.wallet.WalletScreen
 import com.strangerhelp.app.ui.screens.leaderboard.LeaderboardScreen
-import com.strangerhelp.app.ui.screens.ask.AskScreen
 import com.strangerhelp.app.ui.screens.pulse.PulseScreen
 import com.strangerhelp.app.ui.screens.notifications.NotificationsScreen
 import com.strangerhelp.app.ui.screens.path.PathSetupScreen
@@ -94,6 +96,13 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
     val snackbarHostState = remember { SnackbarHostState() }
     
     val notificationViewModel: NotificationViewModel = viewModel(factory = NotificationViewModelFactory())
+    val askViewModel: com.strangerhelp.app.ui.screens.ask.AskViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = com.strangerhelp.app.ui.screens.ask.AskViewModelFactory(
+            com.strangerhelp.app.data.repository.AskRepository(com.strangerhelp.app.data.api.ApiClient.api),
+            com.strangerhelp.app.data.repository.AuthRepository(com.strangerhelp.app.data.api.ApiClient.api)
+        )
+    )
+
     val unreadCount by notificationViewModel.unreadCount.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
@@ -160,8 +169,22 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                 // removed MeetsScreen
                 composable("wallet") { WalletScreen(navController) }
                 composable("leaderboard") { LeaderboardScreen(navController) }
-                composable("ask") { AskScreen(navController) }
+                
                 composable("pulse") { PulseScreen(navController) }
+
+                composable("ask") {
+                    AskListScreen(viewModel = askViewModel, navController = navController)
+                }
+                composable("ask_post") {
+                    AskPostScreen(viewModel = askViewModel, navController = navController)
+                }
+                composable("ask_detail/{questionId}") { backStackEntry ->
+                    val questionId = backStackEntry.arguments?.getString("questionId") ?: ""
+                    AskDetailScreen(
+                        questionId = questionId, viewModel = askViewModel, navController = navController
+                    )
+                }
+
                 composable("notifications") { NotificationsScreen(navController) }
                 composable(
                     "webview?url={url}",
