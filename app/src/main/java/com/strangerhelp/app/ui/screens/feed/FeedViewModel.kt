@@ -65,6 +65,8 @@ class FeedViewModel : ViewModel() {
                         _pulseData.value = Pair(helpers, tasks)
                     }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.e("FeedViewModel", "Error loading home data", e)
             }
