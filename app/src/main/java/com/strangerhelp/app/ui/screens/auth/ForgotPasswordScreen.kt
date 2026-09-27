@@ -93,7 +93,8 @@ fun ForgotPasswordScreen(navController: NavController) {
             
             Spacer(Modifier.height(32.dp))
             
-            if (error != null) {
+            val currentError = error
+            if (currentError != null) {
                 Surface(
                     color = Color(0xFFFFEBEB),
                     shape = RoundedCornerShape(8.dp),
@@ -107,7 +108,7 @@ fun ForgotPasswordScreen(navController: NavController) {
                         Icon(Icons.Outlined.ErrorOutline, contentDescription = null, tint = Color(0xFFB3261E))
                         Spacer(Modifier.width(12.dp))
                         Text(
-                            text = error!!,
+                            text = currentError,
                             color = Color(0xFFB3261E),
                             style = MaterialTheme.typography.bodyMedium
                         )

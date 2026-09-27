@@ -1,39 +1,55 @@
 import re
 
-file_path = "app/src/main/java/com/strangerhelp/app/navigation/AppNavigation.kt"
-with open(file_path, "r") as f:
+with open("app/src/main/java/com/strangerhelp/app/navigation/AppNavigation.kt", "r") as f:
     content = f.read()
 
-# Add imports
-imports = """import com.strangerhelp.app.ui.screens.ask.AskListScreen
-import com.strangerhelp.app.ui.screens.ask.AskPostScreen
-import com.strangerhelp.app.ui.screens.ask.AskDetailScreen"""
-
-content = content.replace("import com.strangerhelp.app.ui.screens.feed.FeedScreen", imports + "\nimport com.strangerhelp.app.ui.screens.feed.FeedScreen")
-
-# Add routes
-routes = """
-                composable("ask") {
-                    AskListScreen(
-                        navController = navController
-                    )
-                }
-                composable("ask_post") {
-                    AskPostScreen(
-                        navController = navController
-                    )
-                }
-                composable("ask_detail/{questionId}") { backStackEntry ->
-                    val questionId = backStackEntry.arguments?.getString("questionId") ?: ""
-                    AskDetailScreen(
-                        questionId = questionId,
+old_nav = """
+                composable(
+                    "gps_camera/{taskId}",
+                    arguments = listOf(navArgument("taskId") { type = NavType.StringType })
+                ) { entry ->
+                    val taskId = entry.arguments?.getString("taskId") ?: ""
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    com.strangerhelp.app.ui.screens.tasks.GpsCameraScreen(
+                        taskId = taskId,
+                        viewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = com.strangerhelp.app.ui.screens.tasks.GpsCameraViewModelFactory(context)),
                         navController = navController
                     )
                 }
 """
 
-content = content.replace("composable(Screen.Path.route) { ComingSoonScreen(\"Path\") }", 
-                          "composable(Screen.Path.route) { ComingSoonScreen(\"Path\") }\n" + routes)
+new_nav = """
+                composable(
+                    "gps_camera/{taskId}",
+                    arguments = listOf(navArgument("taskId") { type = NavType.StringType })
+                ) { entry ->
+                    val taskId = entry.arguments?.getString("taskId") ?: ""
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    
+                    // We need a TaskDetailViewModel to call submitProof
+                    val factory = com.strangerhelp.app.ui.screens.tasks.TaskDetailViewModelFactory(
+                        com.strangerhelp.app.data.repository.TaskRepository(com.strangerhelp.app.data.api.ApiClient.api)
+                    )
+                    val taskDetailViewModel: com.strangerhelp.app.ui.screens.tasks.TaskDetailViewModel = 
+                        androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
 
-with open(file_path, "w") as f:
+                    com.strangerhelp.app.ui.screens.tasks.GpsCameraScreen(
+                        taskId = taskId,
+                        onSubmitProof = { bytes ->
+                            // Use reflection or direct API call if submitProof isn't matching perfectly
+                            // Let's use the taskDetailViewModel
+                            taskDetailViewModel.submitProof(taskId, bytes) {
+                                navController.popBackStack()
+                            }
+                        },
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+"""
+
+# Let's search for the composable using regex to be safe
+pattern = r'composable\(\s*"gps_camera/\{taskId\}"\s*,.*?\}\s*\)\s*\{.*?GpsCameraScreen\(.*?\)\s*\}'
+content = re.sub(pattern, new_nav.strip(), content, flags=re.DOTALL)
+
+with open("app/src/main/java/com/strangerhelp/app/navigation/AppNavigation.kt", "w") as f:
     f.write(content)

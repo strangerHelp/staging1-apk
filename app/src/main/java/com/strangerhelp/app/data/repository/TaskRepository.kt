@@ -15,11 +15,8 @@ class TaskRepository(private val api: StrangerHelpApi) {
     suspend fun getMyTasks(filter: String = "all"): Response<List<Task>> {
         val queryMap = mutableMapOf(
             "mine" to "true",
-            "limit" to "50"
+            "limit" to "100"
         )
-        if (filter != "all") {
-            queryMap["role"] = filter
-        }
         return api.getTasksWithQueryMap(queryMap)
     }
 

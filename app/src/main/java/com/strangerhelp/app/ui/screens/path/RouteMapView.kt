@@ -99,7 +99,8 @@ fun RouteMapView(
         )
 
         // Offline caching progress indicator overlay
-        if (downloadProgress != null) {
+        val currentProgress = downloadProgress
+        if (currentProgress != null) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -116,7 +117,7 @@ fun RouteMapView(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = { downloadProgress!! / 100f },
+                        progress = { (downloadProgress ?: currentProgress) / 100f },
                         modifier = Modifier.width(100.dp).height(4.dp),
                         color = Color(0xFF00BCD4),
                         trackColor = Color.DarkGray

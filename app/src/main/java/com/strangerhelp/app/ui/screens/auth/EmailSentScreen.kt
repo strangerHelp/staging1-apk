@@ -176,10 +176,11 @@ fun EmailSentScreen(navController: NavController, email: String) {
                 }
             }
             
-            if (resendMessage != null) {
+            val msg = resendMessage
+            if (msg != null) {
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = resendMessage!!,
+                    text = msg,
                     color = Primary,
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center

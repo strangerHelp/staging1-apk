@@ -79,9 +79,12 @@ fun FeedScreen(
             verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
             item {
-                HomeHeader(user = user, unreadCount = unreadCount) {
-                    navController.navigate("notifications")
-                }
+                HomeHeader(
+                    user = user,
+                    unreadCount = unreadCount,
+                    onNotificationClick = { navController.navigate("notifications") },
+                    onAvatarClick = { navController.navigate("profile") }
+                )
             }
             
             item {
@@ -163,7 +166,12 @@ fun FeedScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeHeader(user: User?, unreadCount: Int, onNotificationClick: () -> Unit) {
+fun HomeHeader(
+    user: User?,
+    unreadCount: Int,
+    onNotificationClick: () -> Unit,
+    onAvatarClick: (() -> Unit)? = null
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -172,12 +180,11 @@ fun HomeHeader(user: User?, unreadCount: Int, onNotificationClick: () -> Unit) {
         verticalAlignment = Alignment.Top
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            AsyncImage(
-                model = user?.avatar?.takeIf { it.isNotEmpty() } ?: "https://i.pravatar.cc/150?img=11",
-                contentDescription = "Avatar",
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
+            com.strangerhelp.app.ui.components.UserAvatar(
+                avatarUrl = user?.avatar,
+                name = user?.name,
+                size = 52.dp,
+                onClick = onAvatarClick
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column {
@@ -597,19 +604,36 @@ fun RecentTaskCard(task: Task, onClick: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    val (statusColor, statusLabel) = when {
+                        task.status.equals("completed", ignoreCase = true) || task.completionStatus.equals("approved", ignoreCase = true) ->
+                            Pair(Color(0xFF10B981), "Completed")
+                        task.status.equals("claimed", ignoreCase = true) ->
+                            Pair(Color(0xFFF59E0B), "Claimed · In Progress")
+                        task.status.equals("open", ignoreCase = true) ->
+                            Pair(Color(0xFF0288D1), "Open")
+                        else ->
+                            Pair(Color(0xFF64748B), task.status.replaceFirstChar { it.uppercase() })
+                    }
                     Box(
                         modifier = Modifier
                             .size(6.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFF59E0B))
+                            .background(statusColor)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "In Progress",
+                        text = statusLabel,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFFF59E0B)
+                        color = statusColor
                     )
+                    if (task.category.isNotBlank()) {
+                        Text(
+                            text = " · ${task.category}",
+                            fontSize = 13.sp,
+                            color = MutedText
+                        )
+                    }
                 }
             }
         }

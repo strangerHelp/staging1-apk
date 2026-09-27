@@ -1,21 +1,14 @@
 import re
 
-file_path = "app/src/main/AndroidManifest.xml"
-with open(file_path, "r") as f:
+with open("app/src/main/AndroidManifest.xml", "r") as f:
     content = f.read()
 
-service_entry = """        <service
-            android:name=".service.StrangerHelpFirebaseMessagingService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
+if "StopTrackingReceiver" not in content:
+    content = content.replace("</application>", """
+        <receiver
+            android:name=".service.StopTrackingReceiver"
+            android:exported="false" />
+    </application>""")
 
-        <service"""
-
-if "StrangerHelpFirebaseMessagingService" not in content:
-    content = content.replace('        <service', service_entry)
-
-with open(file_path, "w") as f:
+with open("app/src/main/AndroidManifest.xml", "w") as f:
     f.write(content)

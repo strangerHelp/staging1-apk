@@ -51,22 +51,11 @@ fun MessageBubble(
         verticalAlignment = Alignment.Bottom
     ) {
         if (!isOwn) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                // Mock avatar for non-own user, could use a real image if available
-                AsyncImage(
-                    model = "https://i.pravatar.cc/150?u=${message.senderName}",
-                    contentDescription = "Avatar",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    error = painterResource(R.drawable.ic_launcher_foreground_image)
-                )
-            }
+            com.strangerhelp.app.ui.components.UserAvatar(
+                avatarUrl = null,
+                name = message.senderName,
+                size = 28.dp
+            )
             Spacer(modifier = Modifier.width(8.dp))
         }
         

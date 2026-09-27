@@ -35,17 +35,19 @@ fun RatingComponent(
     var rating by remember { mutableStateOf(0) }
     var comment by remember { mutableStateOf("") }
 
-    if (submittedReview != null) {
+    val review = submittedReview
+    if (review != null) {
         AlreadyReviewedCard(
-            review = submittedReview!!,
+            review = review,
             modifier = modifier
         )
         return
     }
 
     val (revieweeId, revieweeName) = remember(task, currentUser) {
-        if (currentUser != null) {
-            viewModel.getRevieweeForTask(task, currentUser!!)
+        val user = currentUser
+        if (user != null) {
+            viewModel.getRevieweeForTask(task, user)
         } else {
             "" to "User"
         }

@@ -38,6 +38,7 @@ class StrangerHelpApp : Application(), ImageLoaderFactory {
             defaultHandler?.uncaughtException(thread, exception)
         }
         
+        com.strangerhelp.app.data.api.ApiClient.init(this)
         setupBackgroundSync()
         com.strangerhelp.app.utils.BatteryMonitor.init(this)
         com.strangerhelp.app.util.MapHelper.initMap(this)

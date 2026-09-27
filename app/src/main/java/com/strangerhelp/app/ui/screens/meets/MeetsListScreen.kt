@@ -5,7 +5,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,10 +38,33 @@ fun MeetsListScreen(
         viewModel.loadMeets()
     }
 
+    BackHandler {
+        if (!navController.popBackStack()) {
+            navController.navigate("feed") {
+                popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                launchSingleTop = true
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Strangers Meet") },
+                navigationIcon = {
+                    IconButton(
+                        onClick = {
+                            if (!navController.popBackStack()) {
+                                navController.navigate("feed") {
+                                    popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
                 actions = {
                     IconButton(onClick = { navController.navigate("create_meet") }) {
                         Icon(Icons.Default.Add, "Create Meet")

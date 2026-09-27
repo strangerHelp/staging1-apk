@@ -26,6 +26,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.platform.testTag
 import com.strangerhelp.app.data.api.ApiClient
 import com.strangerhelp.app.data.model.Task
 import kotlinx.coroutines.delay
@@ -44,14 +51,21 @@ val CyanDeep = Color(0xFF29BC9B)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TasksScreen(navController: NavController) {
+fun TasksScreen(
+    navController: NavController,
+    initialCategory: String? = null
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val database = (context.applicationContext as StrangerHelpApp).database
     val viewModel: TasksViewModel = viewModel(factory = TasksViewModelFactory(database.searchHistoryDao()))
+    val focusManager = LocalFocusManager.current
+    val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
     
     var searchQuery by remember { mutableStateOf("") }
     var debouncedQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("All") }
+    var isSearchFocused by remember { mutableStateOf(false) }
+    var showHistoryDropdown by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf(initialCategory ?: "All") }
     var sortBy by remember { mutableStateOf("newest") }
     
     val categories = listOf("All", "Task", "Document Submission", "Photo Proof", "Parcel Pickup", "Queue Standing", "Verification", "Event / Group Work", "Other")
@@ -74,6 +88,12 @@ fun TasksScreen(navController: NavController) {
     LaunchedEffect(searchQuery) {
         delay(350)
         debouncedQuery = searchQuery
+    }
+
+    LaunchedEffect(debouncedQuery) {
+        if (debouncedQuery.trim().length >= 2) {
+            viewModel.saveSearch(debouncedQuery.trim())
+        }
     }
 
     fun fetchTasks(isLoadMore: Boolean = false) {
@@ -155,10 +175,64 @@ fun TasksScreen(navController: NavController) {
             ) {
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                    onValueChange = { 
+                        searchQuery = it 
+                        if (!showHistoryDropdown && recentSearches.isNotEmpty()) {
+                            showHistoryDropdown = true
+                        }
+                    },
                     placeholder = { Text("Search tasks...", color = androidx.compose.ui.graphics.Color(0xFF666666)) },
-                    leadingIcon = { Icon(Icons.Default.Search, null, tint = androidx.compose.ui.graphics.Color(0xFF666666)) },
-                    modifier = Modifier.weight(1f).height(50.dp),
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = androidx.compose.ui.graphics.Color(0xFF666666)) },
+                    trailingIcon = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { 
+                                        searchQuery = "" 
+                                        debouncedQuery = ""
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Clear search",
+                                        tint = Color(0xFF666666),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            if (recentSearches.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { showHistoryDropdown = !showHistoryDropdown }
+                                ) {
+                                    Icon(
+                                        Icons.Default.History,
+                                        contentDescription = "Search history",
+                                        tint = if (showHistoryDropdown) AccentOrange else Color(0xFF666666),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp)
+                        .onFocusChanged {
+                            isSearchFocused = it.isFocused
+                            if (it.isFocused && recentSearches.isNotEmpty()) {
+                                showHistoryDropdown = true
+                            }
+                        },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(
+                        onSearch = {
+                            if (searchQuery.isNotBlank()) {
+                                viewModel.saveSearch(searchQuery)
+                            }
+                            showHistoryDropdown = false
+                            focusManager.clearFocus()
+                        }
+                    ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryDark,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline,
@@ -185,6 +259,189 @@ fun TasksScreen(navController: NavController) {
                                 text = { Text(label) },
                                 onClick = { sortBy = key; sortExpanded = false }
                             )
+                        }
+                    }
+                }
+            }
+
+            // Search History Dropdown Card (visible when search is focused/active with history)
+            if (showHistoryDropdown && recentSearches.isNotEmpty()) {
+                val displayHistory = if (searchQuery.isBlank()) recentSearches else recentSearches.filter {
+                    it.query.contains(searchQuery, ignoreCase = true)
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE5E5E5))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.History,
+                                    contentDescription = null,
+                                    tint = AccentOrange,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Recent Searches",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryDark
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(
+                                    onClick = {
+                                        viewModel.clearAllSearches()
+                                        showHistoryDropdown = false
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                ) {
+                                    Text("Clear All", fontSize = 12.sp, color = Color(0xFF888888))
+                                }
+                                IconButton(
+                                    onClick = { showHistoryDropdown = false },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Close history",
+                                        tint = Color(0xFF888888),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        HorizontalDivider(color = Color(0xFFEEEEEE))
+                        Spacer(Modifier.height(4.dp))
+
+                        if (displayHistory.isEmpty()) {
+                            Text(
+                                "No matching previous searches",
+                                fontSize = 12.sp,
+                                color = Color(0xFF999999),
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp)
+                            )
+                        } else {
+                            displayHistory.forEach { historyItem ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            searchQuery = historyItem.query
+                                            debouncedQuery = historyItem.query
+                                            viewModel.saveSearch(historyItem.query)
+                                            showHistoryDropdown = false
+                                            focusManager.clearFocus()
+                                        }
+                                        .padding(vertical = 8.dp, horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.History,
+                                        contentDescription = null,
+                                        tint = Color(0xFF757575),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        text = historyItem.query,
+                                        fontSize = 14.sp,
+                                        color = PrimaryDark,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    IconButton(
+                                        onClick = { viewModel.deleteSearch(historyItem.query) },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Remove query",
+                                            tint = Color(0xFF999999),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (recentSearches.isNotEmpty() && !showHistoryDropdown) {
+                // Quick Re-access Horizontal Chip Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.History,
+                        contentDescription = "Recent Searches",
+                        tint = Color(0xFF888888),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "Recent:",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF666666)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        items(recentSearches) { item ->
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFF3F4F6),
+                                border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                                modifier = Modifier.clickable {
+                                    searchQuery = item.query
+                                    debouncedQuery = item.query
+                                    viewModel.saveSearch(item.query)
+                                    focusManager.clearFocus()
+                                }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = item.query,
+                                        fontSize = 11.sp,
+                                        color = PrimaryDark,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Delete search",
+                                        tint = Color(0xFF888888),
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .clickable {
+                                                viewModel.deleteSearch(item.query)
+                                            }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

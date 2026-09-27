@@ -4,13 +4,16 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,13 +75,32 @@ fun PathSetupScreen(
         }
     }
 
+    BackHandler {
+        if (!navController.popBackStack()) {
+            navController.navigate("feed") {
+                popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                launchSingleTop = true
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("🗺️ Path") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                    IconButton(
+                        onClick = {
+                            if (!navController.popBackStack()) {
+                                navController.navigate("feed") {
+                                    popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }
+                        },
+                        modifier = Modifier.testTag("path_back_button")
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 actions = {
@@ -108,13 +130,16 @@ fun PathSetupScreen(
                 CircularProgressIndicator()
             }
         } else if (isPathActive && path != null) {
-            Column(modifier = Modifier.padding(padding)) {
-                PathActiveScreen(
-                    path = path!!,
-                    tasks = tasks,
-                    viewModel = viewModel,
-                    navController = navController
-                )
+            val activePath = path
+            if (activePath != null) {
+                Column(modifier = Modifier.padding(padding)) {
+                    PathActiveScreen(
+                        path = activePath,
+                        tasks = tasks,
+                        viewModel = viewModel,
+                        navController = navController
+                    )
+                }
             }
         } else {
             LazyColumn(
@@ -272,14 +297,16 @@ fun PathSetupScreen(
                 item {
                     Button(
                         onClick = {
-                            if (selectedFrom != null && selectedTo != null) {
+                            val from = selectedFrom
+                            val to = selectedTo
+                            if (from != null && to != null) {
                                 viewModel.setPath(
-                                    fromLocation = selectedFrom!!.display_name,
-                                    fromLat = selectedFrom!!.lat.toDouble(),
-                                    fromLng = selectedFrom!!.lon.toDouble(),
-                                    toLocation = selectedTo!!.display_name,
-                                    toLat = selectedTo!!.lat.toDouble(),
-                                    toLng = selectedTo!!.lon.toDouble(),
+                                    fromLocation = from.display_name,
+                                    fromLat = from.lat.toDoubleOrNull() ?: 0.0,
+                                    fromLng = from.lon.toDoubleOrNull() ?: 0.0,
+                                    toLocation = to.display_name,
+                                    toLat = to.lat.toDoubleOrNull() ?: 0.0,
+                                    toLng = to.lon.toDoubleOrNull() ?: 0.0,
                                     radiusKm = radiusKm.toDouble(),
                                     recurring = recurring
                                 ) { matched ->

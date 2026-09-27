@@ -272,12 +272,13 @@ fun TaskDetailScreen(
             // Dialogs
             
 
-            if (showEditDialog && task != null) {
+            val currentTask = task
+            if (showEditDialog && currentTask != null) {
                 EditTaskDialog(
-                    task = task!!,
+                    task = currentTask,
                     onDismiss = { showEditDialog = false },
                     onSave = { updates ->
-                        viewModel.editTask(task!!._id, updates) { success ->
+                        viewModel.editTask(currentTask._id, updates) { success ->
                             if (success) {
                                 showEditDialog = false
                             } else {

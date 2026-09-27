@@ -445,12 +445,14 @@ fun LiveTrackingSection(
     task: Task,
     modifier: Modifier = Modifier
 ) {
-    if (!task.trackingActive || task.helperLat == null || task.helperLng == null) {
+    val hLat = task.helperLat
+    val hLng = task.helperLng
+    if (!task.trackingActive || hLat == null || hLng == null) {
         return
     }
 
     val distance = haversine(
-        task.helperLat!!, task.helperLng!!,
+        hLat, hLng,
         task.lat ?: 0.0, task.lng ?: 0.0
     )
 
@@ -505,12 +507,12 @@ fun LiveTrackingSection(
                             try {
                                 map.setStyle("https://tiles.openfreemap.org/styles/liberty") { style ->
                                     val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
-                                        .target(org.maplibre.android.geometry.LatLng(task.helperLat!!, task.helperLng!!))
+                                        .target(org.maplibre.android.geometry.LatLng(hLat, hLng))
                                         .zoom(14.0)
                                         .build()
                                     map.cameraPosition = cameraPosition
                                     val markerOptions = org.maplibre.android.annotations.MarkerOptions()
-                                        .position(org.maplibre.android.geometry.LatLng(task.helperLat!!, task.helperLng!!))
+                                        .position(org.maplibre.android.geometry.LatLng(hLat, hLng))
                                         .title("Helper")
                                     map.addMarker(markerOptions)
                                 }

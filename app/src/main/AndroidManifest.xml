@@ -73,5 +73,9 @@
             android:name=".service.TrackingService"            
             android:foregroundServiceType="location"            
             android:exported="false" />    
+    
+        <receiver
+            android:name=".service.StopTrackingReceiver"
+            android:exported="false" />
     </application>
 </manifest>

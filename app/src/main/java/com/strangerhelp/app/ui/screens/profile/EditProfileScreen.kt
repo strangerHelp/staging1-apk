@@ -27,15 +27,44 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.strangerhelp.app.data.model.User
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.strangerhelp.app.ui.components.UserAvatar
+import com.strangerhelp.app.utils.compressAndSaveImage
+import java.io.File
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditProfileScreen(navController: NavController, user: User) {
+fun EditProfileScreen(
+    navController: NavController,
+    user: User,
+    viewModel: ProfileViewModel = viewModel()
+) {
+    val context = LocalContext.current
     var name by remember { mutableStateOf(user.name) }
     var handle by remember { mutableStateOf(user.handle ?: "") }
-    var bio by remember { mutableStateOf("Urban explorer and foodie.") }
+    var bio by remember { mutableStateOf(user.bio.ifBlank { "Urban explorer and foodie." }) }
     var city by remember { mutableStateOf(user.city ?: "") }
-    var locality by remember { mutableStateOf("Koramangala") }
-    var phone by remember { mutableStateOf("+91 98765 43210") }
+    var locality by remember { mutableStateOf(user.area.ifBlank { "Koramangala" }) }
+    var phone by remember { mutableStateOf(user.phone.ifBlank { "+91 98765 43210" }) }
+    
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedImageFile by remember { mutableStateOf<File?>(null) }
+    var isSaving by remember { mutableStateOf(false) }
+    var saveError by remember { mutableStateOf<String?>(null) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            selectedImageUri = uri
+            selectedImageFile = compressAndSaveImage(context, uri)
+        }
+    }
     
     val handleError = handle == "ravi_kumar" // Mock error state
 
@@ -52,18 +81,57 @@ fun EditProfileScreen(navController: NavController, user: User) {
             )
         },
         bottomBar = {
-            Box(
-                modifier = Modifier.fillMaxWidth().background(Color(0xFFF9F9F9)).padding(16.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFF9F9F9))
+                    .padding(16.dp)
             ) {
+                if (saveError != null) {
+                    Text(
+                        text = saveError ?: "",
+                        color = Color.Red,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
                 Button(
-                    onClick = { navController.popBackStack() },
+                    onClick = {
+                        isSaving = true
+                        saveError = null
+                        viewModel.updateProfileDetails(
+                            name = name,
+                            handle = handle,
+                            bio = bio,
+                            city = city,
+                            area = locality,
+                            phone = phone,
+                            avatarFile = selectedImageFile
+                        ) { success, err ->
+                            isSaving = false
+                            if (success) {
+                                navController.popBackStack()
+                            } else {
+                                saveError = err ?: "Failed to save profile changes"
+                            }
+                        }
+                    },
+                    enabled = !isSaving,
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
                     shape = RoundedCornerShape(24.dp)
                 ) {
-                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("SAVE CHANGES", fontWeight = FontWeight.Bold)
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("SAVE CHANGES", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         },
@@ -77,16 +145,49 @@ fun EditProfileScreen(navController: NavController, user: User) {
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Avatar
+            // Avatar with photo picker option
             Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.padding(top = 8.dp)) {
-                AsyncImage(
-                    model = "https://ui-avatars.com/api/?name=${user.name}&background=E0E0E0&color=333&size=200",
-                    contentDescription = "Avatar",
-                    modifier = Modifier.size(100.dp).clip(CircleShape).background(Color.LightGray)
-                )
+                if (selectedImageUri != null) {
+                    AsyncImage(
+                        model = selectedImageUri,
+                        contentDescription = "New Avatar Preview",
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, Color(0xFFFFB340), CircleShape)
+                            .clickable {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
+                } else {
+                    UserAvatar(
+                        avatarUrl = user.avatar,
+                        name = name.ifBlank { user.name },
+                        size = 100.dp,
+                        showEditBadge = true,
+                        onClick = {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    )
+                }
             }
             Spacer(Modifier.height(12.dp))
-            Text("CHANGE AVATAR", color = Color(0xFFF57C00), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = if (selectedImageUri != null) "PHOTO SELECTED (TAP TO CHANGE)" else "CHANGE AVATAR",
+                color = Color(0xFFF57C00),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable {
+                    photoPickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                }
+            )
             
             Spacer(Modifier.height(32.dp))
             

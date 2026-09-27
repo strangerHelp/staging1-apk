@@ -12,7 +12,7 @@ android {
         applicationId = "com.strangerhelp.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0.0"
 
         vectorDrawables.useSupportLibrary = true
@@ -115,3 +115,6 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.1.0")
 }
 dependencies { implementation("com.google.firebase:firebase-messaging-ktx:23.4.0") }
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+}

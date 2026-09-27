@@ -259,8 +259,9 @@ fun LoginScreen(onLoginSuccess: (User) -> Unit, onForgotPasswordClick: () -> Uni
                                 if (res.isSuccessful) {
                                     // Fetch full user
                                     val meRes = ApiClient.api.getMe()
-                                    if (meRes.isSuccessful && meRes.body()?.user != null) {
-                                        onLoginSuccess(meRes.body()!!.user!!)
+                                    val user = meRes.body()?.user
+                                    if (meRes.isSuccessful && user != null) {
+                                        onLoginSuccess(user)
                                     } else error = "Login succeeded but failed to load profile"
                                 } else {
                                     error = if (isRegister) "Registration failed. Email may already exist." else "Invalid email or password"

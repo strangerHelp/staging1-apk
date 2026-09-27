@@ -20,15 +20,27 @@ class TasksViewModel(private val searchHistoryDao: SearchHistoryDao) : ViewModel
         )
 
     fun saveSearch(query: String) {
-        if (query.isBlank()) return
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) return
         viewModelScope.launch {
-            searchHistoryDao.insertSearch(SearchHistory(query = query.trim()))
+            searchHistoryDao.insertSearch(
+                SearchHistory(
+                    query = trimmed,
+                    timestamp = System.currentTimeMillis()
+                )
+            )
         }
     }
 
     fun deleteSearch(query: String) {
         viewModelScope.launch {
             searchHistoryDao.deleteSearch(query)
+        }
+    }
+
+    fun clearAllSearches() {
+        viewModelScope.launch {
+            searchHistoryDao.clearHistory()
         }
     }
 }

@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.testTag
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -115,13 +117,32 @@ fun PulseScreen(navController: NavController) {
         } catch (e: Exception) {}
     }
 
+    BackHandler {
+        if (!navController.popBackStack()) {
+            navController.navigate("feed") {
+                popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                launchSingleTop = true
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             Column {
                 TopAppBar(
                     title = { Text("Live Pulse", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = { navController.navigateUp() }) {
+                        IconButton(
+                            onClick = {
+                                if (!navController.popBackStack()) {
+                                    navController.navigate("feed") {
+                                        popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            },
+                            modifier = Modifier.testTag("pulse_back_button")
+                        ) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
@@ -227,7 +248,8 @@ fun PulseScreen(navController: NavController) {
                 }
             )
             
-            if (downloadProgress != null) {
+            val currentProgress = downloadProgress
+            if (currentProgress != null) {
                 Card(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -240,7 +262,7 @@ fun PulseScreen(navController: NavController) {
                         Text("Downloading Offline Map...", fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         LinearProgressIndicator(
-                            progress = { downloadProgress!! / 100f },
+                            progress = { (downloadProgress ?: currentProgress) / 100f },
                             modifier = Modifier.fillMaxWidth(),
                             color = Saffron
                         )

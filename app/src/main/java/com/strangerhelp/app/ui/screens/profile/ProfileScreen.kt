@@ -64,20 +64,32 @@ fun ProfileScreen(
 ) {
     val user by viewModel.user.collectAsState()
     val stats by viewModel.stats.collectAsState()
-        val isLoading by viewModel.isLoading.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isUploadingAvatar by viewModel.isUploadingAvatar.collectAsState()
+    val uploadMessage by viewModel.message.collectAsState()
+    val uploadError by viewModel.error.collectAsState()
     
     val isSendingVerification by authViewModel.isSendingVerification.collectAsState()
     val verificationMessage by authViewModel.verificationMessage.collectAsState()
     val verificationError by authViewModel.verificationError.collectAsState()
     
     val verificationStatus by verificationViewModel.status.collectAsState()
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val photoPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            val file = com.strangerhelp.app.utils.compressAndSaveImage(context, uri)
+            if (file != null) {
+                viewModel.uploadAvatar(file)
+            }
+        }
+    }
     
     LaunchedEffect(Unit) {
         verificationViewModel.loadStatus()
-    }
-
-    LaunchedEffect(Unit) {
-        // viewModel.loadData()
+        viewModel.loadData()
     }
 
     if (user?.banned == 1) {
@@ -141,11 +153,34 @@ fun ProfileScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Box(contentAlignment = Alignment.BottomEnd) {
-                        AsyncImage(
-                            model = "https://ui-avatars.com/api/?name=${user?.name ?: "U"}&background=E0E0E0&color=333&size=200",
-                            contentDescription = "Avatar",
-                            modifier = Modifier.size(80.dp).clip(CircleShape).background(Color.LightGray)
+                        com.strangerhelp.app.ui.components.UserAvatar(
+                            avatarUrl = user?.avatar,
+                            name = user?.name,
+                            size = 88.dp,
+                            showEditBadge = true,
+                            onClick = {
+                                photoPickerLauncher.launch(
+                                    androidx.activity.result.PickVisualMediaRequest(
+                                        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    )
+                                )
+                            }
                         )
+                        if (isUploadingAvatar) {
+                            Box(
+                                modifier = Modifier
+                                    .size(88.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.5f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(28.dp),
+                                    color = Color.White,
+                                    strokeWidth = 3.dp
+                                )
+                            }
+                        }
                         if (user?.verified == 1) {
                             Box(
                                 modifier = Modifier
@@ -158,6 +193,25 @@ fun ProfileScreen(
                                 Icon(Icons.Default.Verified, contentDescription = "Verified", tint = Color(0xFF004D40), modifier = Modifier.size(20.dp))
                             }
                         }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            photoPickerLauncher.launch(
+                                androidx.activity.result.PickVisualMediaRequest(
+                                    androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
+                            )
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFF57C00))
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (user?.avatar.isNullOrBlank()) "Upload Profile Picture" else "Change Profile Picture",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                     Spacer(Modifier.height(16.dp))
                     Text(text = user?.name ?: "Unknown User", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.Black)

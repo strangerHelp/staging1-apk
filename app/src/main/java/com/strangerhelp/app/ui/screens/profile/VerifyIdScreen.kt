@@ -279,11 +279,13 @@ fun VerifyIdScreen(
 
                     // Submit Button
                     item {
+                        val fUri = frontUri
+                        val sUri = selfieUri
                         Button(
                             onClick = {
-                                if (frontUri != null && selfieUri != null) {
-                                    val frontFile = uriToFile(context, frontUri!!)
-                                    val selfieFile = uriToFile(context, selfieUri!!)
+                                if (fUri != null && sUri != null) {
+                                    val frontFile = uriToFile(context, fUri)
+                                    val selfieFile = uriToFile(context, sUri)
                                     val backFile = backUri?.let { uriToFile(context, it) }
                                     viewModel.submitVerification(
                                         idType = idType,
@@ -294,7 +296,7 @@ fun VerifyIdScreen(
                                     )
                                 }
                             },
-                            enabled = !isSubmitting && frontUri != null && selfieUri != null,
+                            enabled = !isSubmitting && fUri != null && sUri != null,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(52.dp),
@@ -375,10 +377,11 @@ fun PhotoPickerField(
 }
 
 fun uriToFile(context: Context, uri: Uri): File {
-    val inputStream = context.contentResolver.openInputStream(uri)
     val tempFile = File.createTempFile("upload_", ".jpg", context.cacheDir)
-    tempFile.outputStream().use { outputStream ->
-        inputStream?.copyTo(outputStream)
+    context.contentResolver.openInputStream(uri)?.use { inputStream ->
+        tempFile.outputStream().use { outputStream ->
+            inputStream.copyTo(outputStream)
+        }
     }
     return tempFile
 }

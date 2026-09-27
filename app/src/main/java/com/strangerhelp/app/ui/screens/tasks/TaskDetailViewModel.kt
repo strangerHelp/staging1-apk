@@ -401,53 +401,83 @@ class TaskDetailViewModel(
     }
 
 
-    private val _isTracking = MutableStateFlow(false)
-    val isTracking: StateFlow<Boolean> = _isTracking.asStateFlow()
+    
 
-    fun startTracking(taskId: String) {
+
+
+    
+    private val _isTracking = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val isTracking: kotlinx.coroutines.flow.StateFlow<Boolean> = _isTracking.asStateFlow()
+
+    private val _trackingError = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val trackingError: kotlinx.coroutines.flow.StateFlow<String?> = _trackingError.asStateFlow()
+
+    fun startTracking(taskId: String, context: android.content.Context) {
         viewModelScope.launch {
-            try {
-                val body = mapOf("action" to "start_tracking")
-                val res = taskRepository.patchTask(taskId, body)
-                if (res.isSuccessful) {
-                    _isTracking.value = true
-                    loadTask(taskId)
-                }
-            } catch (_: Exception) { }
+            _trackingError.value = null
+
+            if (!hasLocationPermission(context) ) {
+                _trackingError.value = "Location permission is required to share your position."
+                return@launch
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                !hasNotificationPermission(context)) {
+                _trackingError.value =
+                    "Enable notifications so the poster can see your position."
+                return@launch
+            }
+
+            // 1. Tell the server we are starting
+            val response = runCatching {
+                taskRepository.patchTask(taskId, mapOf("action" to "start_tracking"))
+            }.getOrNull()
+
+            if (response?.isSuccessful != true) {
+                _trackingError.value = "Could not start tracking. Please retry."
+                return@launch
+            }
+
+            // 2. Start the foreground service
+            com.strangerhelp.app.service.TrackingService.start(context, taskId)
+            _isTracking.value = true
+            loadTask(taskId)
         }
     }
 
-    fun startTrackingWithService(taskId: String, context: android.content.Context) {
+    fun stopTracking(taskId: String, context: android.content.Context) {
         viewModelScope.launch {
-            try {
-                val body = mapOf("action" to "start_tracking")
-                val res = taskRepository.patchTask(taskId, body)
-                if (res.isSuccessful) {
-                    com.strangerhelp.app.service.TrackingService.start(context, taskId)
-                    _isTracking.value = true
-                    loadTask(taskId)
-                }
-            } catch (_: Exception) { }
+            com.strangerhelp.app.service.TrackingService.stop(context)
+            runCatching {
+                taskRepository.patchTask(taskId, mapOf("action" to "stop_tracking"))
+            }
+            _isTracking.value = false
+            loadTask(taskId)
         }
     }
 
-    fun stopTracking(taskId: String, context: android.content.Context? = null) {
-        viewModelScope.launch {
-            try {
-                if (context != null) {
-                    com.strangerhelp.app.service.TrackingService.stop(context)
-                }
-                val body = mapOf("action" to "stop_tracking")
-                val res = taskRepository.patchTask(taskId, body)
-                if (res.isSuccessful) {
-                    _isTracking.value = false
-                    loadTask(taskId)
-                }
-            } catch (_: Exception) { }
+    fun autoStopTracking(taskId: String, context: android.content.Context) {
+        if (_isTracking.value) {
+            stopTracking(taskId, context)
         }
     }
 
+    private fun hasLocationPermission(context: android.content.Context): Boolean {
+        val fine = androidx.core.content.ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val coarse = androidx.core.content.ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        return fine || coarse
+    }
 
+    private fun hasNotificationPermission(context: android.content.Context): Boolean {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else true
+    }
 
     private fun parseError(errorBody: String?): String {
         if (errorBody == null) return "Something went wrong"

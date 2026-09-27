@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.testTag
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
@@ -91,11 +93,18 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
         )
     )
 
-    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-    val showBottomBar = currentRoute in bottomNavItems.map { it.route }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Feed.route
+    // Show bottom bar on all feature pages (feed, tasks, post, chat, profile, pulse/live, path, meets, ask, wallet, leaderboard, etc.)
+    // Only hide on full screen camera and webview
+    val isFullScreenCameraOrWeb = currentRoute.startsWith("gps_camera") || currentRoute.startsWith("webview")
+    val showBottomBar = !isFullScreenCameraOrWeb
     val snackbarHostState = remember { SnackbarHostState() }
     
     val notificationViewModel: NotificationViewModel = viewModel(factory = NotificationViewModelFactory())
+    val profileViewModel: com.strangerhelp.app.ui.screens.profile.ProfileViewModel = viewModel()
+    val liveUser by profileViewModel.user.collectAsStateWithLifecycle()
+    val activeUser = liveUser ?: user
     val askViewModel: com.strangerhelp.app.ui.screens.ask.AskViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
         factory = com.strangerhelp.app.ui.screens.ask.AskViewModelFactory(
             com.strangerhelp.app.data.repository.AskRepository(com.strangerhelp.app.data.api.ApiClient.api),
@@ -124,17 +133,51 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             bottomNavItems.forEach { screen ->
-                                val selected = currentRoute == screen.route
+                                val selected = when (screen) {
+                                    Screen.Feed -> currentRoute == Screen.Feed.route
+                                    Screen.Tasks -> currentRoute == Screen.Tasks.route ||
+                                                    currentRoute.startsWith("tasks?") ||
+                                                    currentRoute.startsWith("my_tasks")
+                                    Screen.Post -> currentRoute == Screen.Post.route ||
+                                                   currentRoute == "postMeet" ||
+                                                   currentRoute == "postQuestion"
+                                    Screen.Chat -> currentRoute == Screen.Chat.route ||
+                                                   currentRoute.startsWith("chat/") ||
+                                                   currentRoute == "support"
+                                    Screen.Profile -> currentRoute == Screen.Profile.route ||
+                                                      currentRoute.startsWith("profile/") ||
+                                                      currentRoute == "edit_profile" ||
+                                                      currentRoute == "verify_id" ||
+                                                      currentRoute == "refer_earn" ||
+                                                      currentRoute == "karma_wallet" ||
+                                                      currentRoute == "wallet"
+                                }
                                 CustomBottomNavItem(
                                     screen = screen,
                                     selected = selected,
                                     unreadCount = if (screen == Screen.Chat) unreadCount else 0,
                                     onClick = {
-                                        if (currentRoute != screen.route) {
-                                            navController.navigate(screen.route) {
-                                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
+                                        if (screen == Screen.Feed) {
+                                            // Pressing Home from ANY screen navigates reliably back to Feed
+                                            if (currentRoute != Screen.Feed.route) {
+                                                navController.navigate(Screen.Feed.route) {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        inclusive = false
+                                                        saveState = false
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = false
+                                                }
+                                            }
+                                        } else {
+                                            if (currentRoute != screen.route) {
+                                                navController.navigate(screen.route) {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
                                             }
                                         }
                                     }
@@ -146,8 +189,15 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
             }
         ) { padding ->
             NavHost(navController, startDestination = Screen.Feed.route, Modifier.padding(padding)) {
-                composable(Screen.Feed.route) { FeedScreen(navController, user) }
+                composable(Screen.Feed.route) { FeedScreen(navController, activeUser) }
                 composable(Screen.Tasks.route) { TasksScreen(navController) }
+                composable(
+                    route = "tasks?category={category}",
+                    arguments = listOf(navArgument("category") { type = NavType.StringType; nullable = true; defaultValue = null })
+                ) { backStackEntry ->
+                    val category = backStackEntry.arguments?.getString("category")
+                    TasksScreen(navController, initialCategory = category)
+                }
                 composable(
                     route = "my_tasks?filter={filter}",
                     arguments = listOf(navArgument("filter") { type = NavType.StringType; defaultValue = "all" })
@@ -159,12 +209,17 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                             com.strangerhelp.app.data.repository.TaskRepository(com.strangerhelp.app.data.api.ApiClient.api)
                         )
                     )
-                    com.strangerhelp.app.ui.screens.tasks.MyTasksScreen(filter = filter, navController = navController, viewModel = myTasksViewModel)
+                    com.strangerhelp.app.ui.screens.tasks.MyTasksScreen(
+                        initialFilter = filter,
+                        navController = navController,
+                        viewModel = myTasksViewModel,
+                        currentUserId = activeUser?.id
+                    )
                 }
                 composable(Screen.Post.route) { PostTaskScreen(navController) }
                 composable(Screen.Chat.route) { ChatListScreen(viewModel = chatViewModel, navController = navController) }
                 composable("support") { com.strangerhelp.app.ui.screens.chat.SupportChatScreen(navController = navController) }
-                composable(Screen.Profile.route) { ProfileScreen(navController, onLogout = onLogout) }
+                composable(Screen.Profile.route) { ProfileScreen(navController, onLogout = onLogout, viewModel = profileViewModel) }
                 
                 // removed MeetsScreen
                 composable("wallet") { WalletScreen(navController) }
@@ -217,12 +272,21 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
 
 
                 composable("meets") { com.strangerhelp.app.ui.screens.meets.MeetsListScreen(meetViewModel, navController) }
+                composable("create_meet") { com.strangerhelp.app.ui.screens.meets.CreateMeetScreen(meetViewModel, navController) }
+                composable(
+                    route = "meet_detail/{meetId}",
+                    arguments = listOf(navArgument("meetId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val meetId = backStackEntry.arguments?.getString("meetId") ?: ""
+                    com.strangerhelp.app.ui.screens.meets.MeetDetailScreen(meetId = meetId, viewModel = meetViewModel, navController = navController)
+                }
+                composable("profile/{userId}") { ProfileScreen(navController, onLogout = onLogout) }
                 composable("path_setup") { PathSetupScreen(navController) }
                 composable("path_active") { PathSetupScreen(navController) }
 
                 composable("postMeet") { PostMeetScreen(navController) }
                 composable("postQuestion") { PostQuestionScreen(navController) }
-                composable("edit_profile") { EditProfileScreen(navController, user) }
+                composable("edit_profile") { EditProfileScreen(navController, activeUser, viewModel = profileViewModel) }
 
                 composable("verify_id") {
                     VerifyIdScreen(navController = navController)
@@ -254,10 +318,23 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                 ) { entry ->
                     val taskId = entry.arguments?.getString("taskId") ?: ""
                     val context = androidx.compose.ui.platform.LocalContext.current
+                    
+                    val gpsCameraViewModel: com.strangerhelp.app.ui.screens.tasks.GpsCameraViewModel = 
+                        androidx.lifecycle.viewmodel.compose.viewModel(factory = com.strangerhelp.app.ui.screens.tasks.GpsCameraViewModelFactory(context))
+
                     com.strangerhelp.app.ui.screens.tasks.GpsCameraScreen(
                         taskId = taskId,
-                        viewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = com.strangerhelp.app.ui.screens.tasks.GpsCameraViewModelFactory(context)),
-                        navController = navController
+                        onSubmitProof = { bytes, onResult ->
+                            gpsCameraViewModel.submitProof(taskId, bytes) { success ->
+                                if (success) {
+                                    onResult(true, null)
+                                    navController.popBackStack()
+                                } else {
+                                    onResult(false, gpsCameraViewModel.error.value ?: "Failed to submit proof. Please try again.")
+                                }
+                            }
+                        },
+                        onBack = { navController.popBackStack() }
                     )
                 }
 
@@ -298,6 +375,7 @@ fun CustomBottomNavItem(
             .height(64.dp)
             .clip(CircleShape)
             .background(bgColor)
+            .testTag("footer_${screen.label.lowercase()}")
             .clickable(
                 interactionSource = interactionSource,
                 indication = null, // Or use a custom ripple if desired

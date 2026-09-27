@@ -41,8 +41,9 @@ class OAuthViewModel : ViewModel() {
                 viewModelScope.launch {
                     try {
                         val meRes = ApiClient.api.getMe()
-                        if (meRes.isSuccessful && meRes.body()?.user != null) {
-                            _oauthState.value = OAuthState.Success(meRes.body()!!.user!!)
+                        val user = meRes.body()?.user
+                        if (meRes.isSuccessful && user != null) {
+                            _oauthState.value = OAuthState.Success(user)
                         } else {
                             loginAttempted = false
                             _oauthState.value = OAuthState.Error("Failed to fetch user profile.")

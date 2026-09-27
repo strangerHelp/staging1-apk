@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbUp
@@ -52,10 +54,33 @@ fun AskListScreen(
         viewModel.loadQuestions(selectedCategory)
     }
 
+    BackHandler {
+        if (!navController.popBackStack()) {
+            navController.navigate("feed") {
+                popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                launchSingleTop = true
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Ask the Community") },
+                navigationIcon = {
+                    IconButton(
+                        onClick = {
+                            if (!navController.popBackStack()) {
+                                navController.navigate("feed") {
+                                    popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
                 actions = {
                     IconButton(onClick = { navController.navigate("ask_post") }) {
                         Icon(Icons.Default.Add, "Ask a question")
@@ -344,7 +369,7 @@ fun AskPostScreen(
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },
-                    label = { Text("Location (optional)") },
+                    label = { Text("Location") },
                     placeholder = { Text("Enter location...") },
                     modifier = Modifier.fillMaxWidth()
                 )

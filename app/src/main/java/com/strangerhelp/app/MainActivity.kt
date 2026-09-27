@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
         Coil.setImageLoader(imageLoader)
 
         try {
-            ApiClient.init(this)
+            
         } catch (e: Exception) {
             AppLogger.e("MainActivity", "Failed to initialize ApiClient during app launch", e)
         }
@@ -132,24 +132,26 @@ class MainActivity : ComponentActivity() {
                                 CircularProgressIndicator()
                             }
                         }
-                        currentUser == null -> {
-                            com.strangerhelp.app.navigation.AuthNavigation(
-                                onLoginSuccess = { user ->
-                                    currentUser = user
-                                }
-                            )
-                        }
                         else -> {
-                            AppNavigation(
-                                user = currentUser!!,
-                                onLogout = {
-                                    scope.launch {
-                                        try { ApiClient.api.logout() } catch (_: Exception) {}
-                                        ApiClient.clearSession()
-                                        currentUser = null
+                            val user = currentUser
+                            if (user == null) {
+                                com.strangerhelp.app.navigation.AuthNavigation(
+                                    onLoginSuccess = { loggedInUser ->
+                                        currentUser = loggedInUser
                                     }
-                                }
-                            )
+                                )
+                            } else {
+                                AppNavigation(
+                                    user = user,
+                                    onLogout = {
+                                        scope.launch {
+                                            try { ApiClient.api.logout() } catch (_: Exception) {}
+                                            ApiClient.clearSession()
+                                            currentUser = null
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }

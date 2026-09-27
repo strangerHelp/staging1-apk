@@ -42,6 +42,19 @@ interface StrangerHelpApi {
     suspend fun getVerificationStatus(): Response<com.strangerhelp.app.data.model.VerificationStatus>
     
     @Multipart
+    @POST("api/auth/profile")
+    suspend fun updateProfile(
+        @Part("name") name: okhttp3.RequestBody? = null,
+        @Part("handle") handle: okhttp3.RequestBody? = null,
+        @Part("bio") bio: okhttp3.RequestBody? = null,
+        @Part("city") city: okhttp3.RequestBody? = null,
+        @Part("area") area: okhttp3.RequestBody? = null,
+        @Part("country") country: okhttp3.RequestBody? = null,
+        @Part("phone") phone: okhttp3.RequestBody? = null,
+        @Part avatar: okhttp3.MultipartBody.Part? = null
+    ): Response<com.strangerhelp.app.data.model.GenericResponse>
+
+    @Multipart
     @POST("api/auth/verify")
     suspend fun submitVerification(
         @Part("idType") idType: okhttp3.RequestBody,
