@@ -66,9 +66,23 @@ fun TaskDetailScreen(
     val isClaiming by viewModel.isClaiming.collectAsStateWithLifecycle()
     val isSubmittingProof by viewModel.isSubmittingProof.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    
 
-    
+    // Guard: if taskId is blank, never call API
+    if (taskId.isBlank()) {
+        Box(Modifier.fillMaxSize(), Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+                Text("Task not found", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(Modifier.height(8.dp))
+                Text("The link did not contain a valid task identifier.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = { navController.popBackStack() }) {
+                    Text("Go back")
+                }
+            }
+        }
+        return
+    }
+
     var showRejectionDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -81,7 +95,9 @@ fun TaskDetailScreen(
     LaunchedEffect(error) {
         if (!error.isNullOrEmpty()) {
             Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-            viewModel.clearError()
+            if (task != null) {
+                viewModel.clearError()
+            }
         }
     }
 
@@ -133,6 +149,74 @@ fun TaskDetailScreen(
         if (isLoading && task == null) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = AccentOrange)
+            }
+        } else if (task == null) {
+            val isNotFound = error?.contains("not found", ignoreCase = true) == true || error?.contains("removed", ignoreCase = true) == true
+            val isForbidden = error?.contains("access", ignoreCase = true) == true || error?.contains("private", ignoreCase = true) == true || error?.contains("forbidden", ignoreCase = true) == true
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = if (isNotFound) Icons.Outlined.SearchOff else if (isForbidden) Icons.Outlined.Lock else Icons.Outlined.CloudOff,
+                        contentDescription = "Task State",
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = if (isNotFound) "Task not available" else if (isForbidden) "Access Denied" else "Unable to load task",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = if (isNotFound) {
+                            "This task is no longer available. It may have been deleted, completed, or is private."
+                        } else if (isForbidden) {
+                            "You don't have access to this task. It may be a private task that requires an invite link."
+                        } else {
+                            error ?: "Network error. Check your connection."
+                        },
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (!isNotFound && !isForbidden) {
+                            Button(
+                                onClick = { viewModel.loadTask(taskId) },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentOrange)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Retry", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                if (!navController.popBackStack()) {
+                                    navController.navigate("feed") {
+                                        popUpTo(0) { inclusive = false }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            }
+                        ) {
+                            Text("Go Back")
+                        }
+                    }
+                }
             }
         } else {
             task?.let { t ->

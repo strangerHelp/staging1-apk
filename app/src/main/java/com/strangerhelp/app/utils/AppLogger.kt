@@ -10,20 +10,35 @@ object AppLogger {
     private const val DEFAULT_TAG = "AppLogger"
 
     fun d(tag: String = DEFAULT_TAG, message: String) {
-        Log.d(tag, message)
+        try {
+            Log.d(tag, message)
+        } catch (_: Throwable) {
+            println("[$tag] D: $message")
+        }
     }
 
     fun i(tag: String = DEFAULT_TAG, message: String) {
-        Log.i(tag, message)
+        try {
+            Log.i(tag, message)
+        } catch (_: Throwable) {
+            println("[$tag] I: $message")
+        }
     }
 
     fun w(tag: String = DEFAULT_TAG, message: String, throwable: Throwable? = null) {
-        Log.w(tag, message, throwable)
+        try {
+            Log.w(tag, message, throwable)
+        } catch (_: Throwable) {
+            println("[$tag] W: $message ${throwable?.message.orEmpty()}")
+        }
     }
 
     fun e(tag: String = DEFAULT_TAG, message: String, throwable: Throwable? = null) {
-        Log.e(tag, message, throwable)
-        // In a production environment, this would forward the error to a service 
-        // like Sentry, Firebase Crashlytics, or Datadog.
+        try {
+            Log.e(tag, message, throwable)
+        } catch (_: Throwable) {
+            System.err.println("[$tag] E: $message ${throwable?.message.orEmpty()}")
+            throwable?.printStackTrace()
+        }
     }
 }

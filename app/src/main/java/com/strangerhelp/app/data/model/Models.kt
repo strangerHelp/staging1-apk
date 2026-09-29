@@ -39,41 +39,95 @@ data class User(
 @Entity(tableName = "tasks")
 data class Task(
     @PrimaryKey @SerializedName(value = "_id", alternate = ["id"]) val _id: String = "",
-    val title: String = "",
-    val description: String = "",
-    val category: String = "",
-    val budget: Int = 0,
-    val deadline: String = "Today",
-    val location: String = "",
-    val city: String = "",
-    val lat: Double? = null,
-    val lng: Double? = null,
-    val anonymous: Int = 0,
-    val urgent: Int = 0,
-    val status: String = "open",
-    val posterId: String = "",
-    val posterName: String = "",
-    val posterVerified: Boolean = false,
-    val claimedBy: String? = null,
-    val claimedByName: String? = null,
-    val claimerVerified: Boolean = false,
-    val distance: Double? = null,
-    val attachments: List<String> = emptyList(),
-    val attachmentCount: Int = 0,
-    val completionProof: List<String> = emptyList(),
-    @com.google.gson.annotations.SerializedName("completion_status") val completionStatus: String = "",
-    @com.google.gson.annotations.SerializedName("rejection_reason") val rejectionReason: String? = null,
-    val createdAt: String = "",
-    val trackingActive: Boolean = false,
-    val helperLat: Double? = null,
-    val helperLng: Double? = null,
-    
-    val visibility: String = "public",
-    val inviteCode: String? = null,
-    val claimRequests: List<ClaimRequest>? = emptyList(),
-    val claimedUsers: List<ClaimedUser>? = emptyList(),
-    val maxClaimers: Int = 1
+    @SerializedName("title") val title: String = "",
+    @SerializedName("description") val description: String = "",
+    @SerializedName("category") val category: String = "",
+    @SerializedName("budget") val budget: Int = 0,
+    @SerializedName("deadline") val deadline: String = "Today",
+    @SerializedName("location") val location: String = "",
+    @SerializedName("city") val city: String = "",
+    @SerializedName("lat") val lat: Double? = null,
+    @SerializedName("lng") val lng: Double? = null,
+    @SerializedName("anonymous") val anonymous: Int = 0,
+    @SerializedName("urgent") val urgent: Int = 0,
+    @SerializedName("status") val status: String = "open",
+    @SerializedName(value = "posterId", alternate = ["poster_id"]) val posterId: String = "",
+    @SerializedName(value = "posterName", alternate = ["poster_name", "posted_by", "postedBy"]) val posterName: String = "",
+    @SerializedName(value = "posterVerified", alternate = ["poster_verified"]) val posterVerified: Boolean = false,
+    @SerializedName(value = "claimedBy", alternate = ["claimed_by"]) val claimedBy: String? = null,
+    @SerializedName(value = "claimedByName", alternate = ["claimed_by_name"]) val claimedByName: String? = null,
+    @SerializedName(value = "claimerVerified", alternate = ["claimer_verified"]) val claimerVerified: Boolean = false,
+    @SerializedName("distance") val distance: Double? = null,
+    @SerializedName("attachments") val attachments: List<String> = emptyList(),
+    @SerializedName(value = "attachmentCount", alternate = ["attachment_count"]) val attachmentCount: Int = 0,
+    @SerializedName(value = "completionProof", alternate = ["completion_proof"]) val completionProof: List<String> = emptyList(),
+    @SerializedName(value = "completionStatus", alternate = ["completion_status"]) val completionStatus: String = "",
+    @SerializedName(value = "rejectionReason", alternate = ["rejection_reason"]) val rejectionReason: String? = null,
+    @SerializedName(value = "createdAt", alternate = ["created_at"]) val createdAt: String = "",
+    @SerializedName(value = "trackingActive", alternate = ["tracking_active"]) val trackingActive: Boolean = false,
+    @SerializedName(value = "helperLat", alternate = ["helper_lat"]) val helperLat: Double? = null,
+    @SerializedName(value = "helperLng", alternate = ["helper_lng"]) val helperLng: Double? = null,
+    @SerializedName("visibility") val visibility: String = "public",
+    @SerializedName(value = "inviteCode", alternate = ["invite_code"]) val inviteCode: String? = null,
+    @SerializedName(value = "claimRequests", alternate = ["claim_requests"]) val claimRequests: List<ClaimRequest>? = emptyList(),
+    @SerializedName(value = "claimedUsers", alternate = ["claimed_users"]) val claimedUsers: List<ClaimedUser>? = emptyList(),
+    @SerializedName(value = "maxClaimers", alternate = ["max_claimers"]) val maxClaimers: Int = 1
 )
+
+fun Task.sanitized(): Task {
+    val idVal = (this._id as? String?).orEmpty()
+    val titleVal = (this.title as? String?).orEmpty()
+    val descVal = (this.description as? String?).orEmpty()
+    val catVal = (this.category as? String?).orEmpty()
+    val deadlineVal = (this.deadline as? String?).takeIf { !it.isNullOrBlank() } ?: "Today"
+    val locVal = (this.location as? String?).orEmpty()
+    val cityVal = (this.city as? String?).orEmpty()
+    val statusVal = (this.status as? String?).takeIf { !it.isNullOrBlank() } ?: "open"
+    val pIdVal = (this.posterId as? String?).orEmpty()
+    val pNameVal = (this.posterName as? String?).orEmpty()
+    val compStatusVal = (this.completionStatus as? String?).orEmpty()
+    val createdVal = (this.createdAt as? String?).orEmpty()
+    val visVal = (this.visibility as? String?).takeIf { !it.isNullOrBlank() } ?: "public"
+    val attachVal = (this.attachments as? List<String>?) ?: emptyList()
+    val compProofVal = (this.completionProof as? List<String>?) ?: emptyList()
+    val claimReqVal = (this.claimRequests as? List<ClaimRequest>?) ?: emptyList()
+    val claimedUsrVal = (this.claimedUsers as? List<ClaimedUser>?) ?: emptyList()
+
+    return this.copy(
+        _id = if (idVal.isNotBlank()) idVal else java.util.UUID.randomUUID().toString(),
+        title = titleVal,
+        description = descVal,
+        category = catVal,
+        budget = if (this.budget < 0) 0 else this.budget,
+        deadline = deadlineVal,
+        location = locVal,
+        city = cityVal,
+        anonymous = this.anonymous,
+        urgent = this.urgent,
+        status = statusVal,
+        posterId = pIdVal,
+        posterName = pNameVal,
+        posterVerified = this.posterVerified,
+        claimedBy = this.claimedBy as? String?,
+        claimedByName = this.claimedByName as? String?,
+        claimerVerified = this.claimerVerified,
+        distance = this.distance,
+        attachments = attachVal,
+        attachmentCount = if (this.attachmentCount > 0) this.attachmentCount else attachVal.size,
+        completionProof = compProofVal,
+        completionStatus = compStatusVal,
+        rejectionReason = this.rejectionReason as? String?,
+        createdAt = createdVal,
+        trackingActive = this.trackingActive,
+        helperLat = this.helperLat,
+        helperLng = this.helperLng,
+        visibility = visVal,
+        inviteCode = this.inviteCode as? String?,
+        claimRequests = claimReqVal,
+        claimedUsers = claimedUsrVal,
+        maxClaimers = if (this.maxClaimers <= 0) 1 else this.maxClaimers
+    )
+}
 
 @Entity(tableName = "conversations")
 data class Conversation(

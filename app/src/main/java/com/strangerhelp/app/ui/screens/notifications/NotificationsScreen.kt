@@ -192,46 +192,88 @@ fun getNotificationIcon(type: String): String = when (type) {
     else -> "🔔"
 }
 
+fun extractTaskIdFromLink(link: String, notificationType: String = ""): String? {
+    val trimmed = link.trim().removeSurrounding("\"").removeSurrounding("'")
+    if (trimmed.isNotBlank()) {
+        val clean = if (trimmed.contains("://")) {
+            trimmed.substringAfter("://").substringAfter("/", "")
+        } else {
+            trimmed
+        }.trim().trimStart('/')
+
+        val withoutQuery = clean.substringBefore('?').substringBefore('#').trimEnd('/')
+        val segments = withoutQuery.split('/').filter { it.isNotBlank() }
+
+        // Find "tasks" or "task" segment
+        val taskIndex = segments.indexOfFirst { it.equals("tasks", ignoreCase = true) || it.equals("task", ignoreCase = true) }
+        if (taskIndex != -1 && taskIndex + 1 < segments.size) {
+            val id = segments[taskIndex + 1].trim()
+            if (id.isNotBlank()) return id
+        }
+
+        // Check if query parameter has taskId or id
+        if (trimmed.contains("taskId=", ignoreCase = true)) {
+            val id = trimmed.substringAfter("taskId=").substringBefore('&').substringBefore('#').trim()
+            if (id.isNotBlank()) return id
+        }
+        if (trimmed.contains("id=", ignoreCase = true)) {
+            val id = trimmed.substringAfter("id=").substringBefore('&').substringBefore('#').trim()
+            if (id.isNotBlank()) return id
+        }
+
+        // If link itself is just the ID and notification type is task-related
+        if (segments.size == 1 && !segments[0].equals("feed", ignoreCase = true) && !segments[0].equals("chat", ignoreCase = true)) {
+            val candidate = segments[0].trim()
+            if (candidate.isNotBlank() && (
+                notificationType.startsWith("task", ignoreCase = true) ||
+                notificationType.contains("claim", ignoreCase = true) ||
+                notificationType.contains("proof", ignoreCase = true) ||
+                notificationType.contains("review", ignoreCase = true)
+            )) {
+                return candidate
+            }
+        }
+    }
+    return null
+}
+
+fun extractConversationIdFromLink(link: String): String? {
+    val trimmed = link.trim().removeSurrounding("\"").removeSurrounding("'")
+    if (trimmed.isBlank()) return null
+    val clean = if (trimmed.contains("://")) {
+        trimmed.substringAfter("://").substringAfter("/", "")
+    } else {
+        trimmed
+    }.trim().trimStart('/')
+    val withoutQuery = clean.substringBefore('?').substringBefore('#').trimEnd('/')
+    val segments = withoutQuery.split('/').filter { it.isNotBlank() }
+    val chatIndex = segments.indexOfFirst { it.equals("chat", ignoreCase = true) || it.equals("messages", ignoreCase = true) }
+    if (chatIndex != -1 && chatIndex + 1 < segments.size) {
+        return segments[chatIndex + 1].trim()
+    }
+    return null
+}
+
 fun handleNotificationNavigation(
     notification: Notification,
     navController: NavController
 ) {
-    val link = notification.link
-    // link format: "/chat/conv123" or "/tasks/task123"
+    val rawLink = notification.link.trim()
+    val taskId = extractTaskIdFromLink(rawLink, notification.type)
+    if (taskId != null) {
+        navController.navigate("task/$taskId")
+        return
+    }
 
-    when {
-        link.startsWith("/chat/") -> {
-            val conversationId = link.removePrefix("/chat/")
-            navController.navigate("chat/$conversationId") {
-                popUpTo(navController.graph.startDestinationId) {
-                    saveState = true
-                }
-                launchSingleTop = true
-                restoreState = true
-            }
-        }
-        link.startsWith("/tasks/") -> {
-            val taskId = link.removePrefix("/tasks/")
-            navController.navigate("task/$taskId") {
-                popUpTo(navController.graph.startDestinationId) {
-                    saveState = true
-                }
-                launchSingleTop = true
-                restoreState = true
-            }
-        }
-        link.startsWith("/user/") -> {
-            val userId = link.removePrefix("/user/")
-            navController.navigate("profile/$userId")
-        }
-        link.startsWith("/meets/") -> {
-            val meetId = link.removePrefix("/meets/")
-            navController.navigate("meet_detail/$meetId")
-        }
-        else -> {
-            navController.navigate("feed") {
-                popUpTo(navController.graph.startDestinationId) { inclusive = true }
-            }
-        }
+    val convId = extractConversationIdFromLink(rawLink)
+    if (convId != null) {
+        navController.navigate("chat/$convId")
+        return
+    }
+
+    if (rawLink.isNotBlank()) {
+        com.strangerhelp.app.navigation.DeepLinkHandler.handleLink(rawLink)
+    } else {
+        navController.navigate("feed")
     }
 }

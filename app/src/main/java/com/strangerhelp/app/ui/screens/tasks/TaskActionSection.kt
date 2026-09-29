@@ -63,20 +63,13 @@ fun TaskActionSection(
                 ) {
                     Text(if (task.maxClaimers > 1) "Request to Join Group" else "Request to Claim Task")
                 }
-                OutlinedButton(
-                    onClick = { 
-                        viewModel.messagePoster(task._id, task.posterId) { convId ->
-                            navController.navigate("chat/$convId")
-                        }
-                    },
+                ChatWithPosterButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController,
                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                    border = BorderStroke(1.dp, PrimaryDark),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark)
-                ) {
-                    Icon(Icons.Default.Chat, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Message Poster")
-                }
+                    label = "Message Poster"
+                )
             }
             TaskUiState.HELPER_REQUEST_PENDING -> {
                 Button(
@@ -87,6 +80,13 @@ fun TaskActionSection(
                 ) {
                     Text("⏳ Request Sent — Waiting for Approval")
                 }
+                Spacer(Modifier.height(8.dp))
+                ChatWithPosterButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController,
+                    label = "💬 Chat with Poster"
+                )
             }
             TaskUiState.HELPER_REQUEST_REJECTED -> {
                 Button(
@@ -96,6 +96,13 @@ fun TaskActionSection(
                 ) {
                     Text("Request Rejected — Request Again")
                 }
+                Spacer(Modifier.height(8.dp))
+                ChatWithPosterButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController,
+                    label = "💬 Chat with Poster"
+                )
             }
             TaskUiState.HELPER_CLAIMED_CAN_TRACK, TaskUiState.HELPER_TRACKING -> {
                 val isTracking = uiState == TaskUiState.HELPER_TRACKING
@@ -107,7 +114,6 @@ fun TaskActionSection(
                         Text(if (task.maxClaimers > 1) "You joined this group task!" else "You are the helper for this task!", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = androidx.compose.ui.graphics.Color(0xFF10B981))
                     }
                 }
-
 
                 Button(
                     onClick = { navController.navigate("gps_camera/${task._id}") },
@@ -121,22 +127,14 @@ fun TaskActionSection(
 
                 HelperTrackingControls(task = task, viewModel = viewModel)
                 
-                OutlinedButton(
-                    onClick = { 
-                        viewModel.messagePoster(task._id, task.posterId) { convId ->
-                            navController.navigate("chat/$convId")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    border = BorderStroke(1.dp, PrimaryDark),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark)
-                ) {
-                    Icon(Icons.Default.Chat, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("💬 Chat with Poster")
-                }
+                ChatWithPosterButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController,
+                    label = "💬 Chat with Poster"
+                )
             }
-                        TaskUiState.HELPER_PROOF_PENDING -> {
+            TaskUiState.HELPER_PROOF_PENDING -> {
                 Card(colors = CardDefaults.cardColors(containerColor = AccentOrange.copy(alpha = 0.12f)), shape = RoundedCornerShape(8.dp)) {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("⏳", fontSize = 24.sp)
@@ -144,6 +142,13 @@ fun TaskActionSection(
                         Text("Proof submitted — waiting for poster to review", fontSize = 14.sp, color = AccentOrange, fontWeight = FontWeight.Medium)
                     }
                 }
+                Spacer(Modifier.height(8.dp))
+                ChatWithPosterButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController,
+                    label = "💬 Chat with Poster"
+                )
                 Spacer(Modifier.height(16.dp))
                 ProofGallery(proof = task.completionProof, canReview = false)
             }
@@ -167,6 +172,13 @@ fun TaskActionSection(
                 ) {
                     Text("📸 Retake Photo & Resubmit")
                 }
+                Spacer(Modifier.height(8.dp))
+                ChatWithPosterButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController,
+                    label = "💬 Chat with Poster"
+                )
                 Spacer(Modifier.height(16.dp))
                 ProofGallery(proof = task.completionProof, canReview = false)
             }
@@ -178,6 +190,13 @@ fun TaskActionSection(
                         Text("Task completed!", fontSize = 16.sp, color = androidx.compose.ui.graphics.Color(0xFF10B981), fontWeight = FontWeight.Bold)
                     }
                 }
+                Spacer(Modifier.height(8.dp))
+                ChatWithPosterButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController,
+                    label = "💬 Chat with Poster"
+                )
                 Spacer(Modifier.height(8.dp))
 
                 ProofGallery(proof = task.completionProof, canReview = false)
@@ -263,20 +282,11 @@ fun TaskActionSection(
                 Spacer(Modifier.height(8.dp))
                 LiveTrackingSection(task = task)
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { 
-                        viewModel.messagePoster(task._id, task.claimedBy ?: "") { convId ->
-                            navController.navigate("chat/$convId")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    border = BorderStroke(1.dp, PrimaryDark),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark)
-                ) {
-                    Icon(Icons.Default.Chat, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("💬 Message Helper")
-                }
+                ChatWithMessageHelperButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController
+                )
             }
             TaskUiState.POSTER_REVIEW_PROOF -> {
                 ProofGallery(
@@ -286,20 +296,11 @@ fun TaskActionSection(
                     onReject = { reason -> viewModel.rejectCompletion(task._id, reason) }
                 )
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { 
-                        viewModel.messagePoster(task._id, task.claimedBy ?: "") { convId ->
-                            navController.navigate("chat/$convId")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    border = BorderStroke(1.dp, PrimaryDark),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark)
-                ) {
-                    Icon(Icons.Default.Chat, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("💬 Message Helper")
-                }
+                ChatWithMessageHelperButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController
+                )
             }
             TaskUiState.POSTER_PROOF_REJECTED -> {
                 Card(colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(0xFFEE0000).copy(alpha = 0.12f)), shape = RoundedCornerShape(8.dp)) {
@@ -314,20 +315,11 @@ fun TaskActionSection(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { 
-                        viewModel.messagePoster(task._id, task.claimedBy ?: "") { convId ->
-                            navController.navigate("chat/$convId")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    border = BorderStroke(1.dp, PrimaryDark),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark)
-                ) {
-                    Icon(Icons.Default.Chat, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("💬 Message Helper")
-                }
+                ChatWithMessageHelperButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController
+                )
             }
             TaskUiState.POSTER_COMPLETED -> {
                 Card(colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(0xFF10B981).copy(alpha = 0.12f)), shape = RoundedCornerShape(8.dp)) {
@@ -337,6 +329,12 @@ fun TaskActionSection(
                         Text("Task completed!", fontSize = 16.sp, color = androidx.compose.ui.graphics.Color(0xFF10B981), fontWeight = FontWeight.Bold)
                     }
                 }
+                Spacer(Modifier.height(8.dp))
+                ChatWithMessageHelperButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController
+                )
                 Spacer(Modifier.height(16.dp))
                 ProofGallery(proof = task.completionProof, canReview = false)
                 Spacer(Modifier.height(16.dp))
@@ -352,6 +350,41 @@ fun TaskActionSection(
                         Text("Please pay ₹${task.budget} to ${task.claimedByName ?: "the helper"} directly via UPI. Verify payment terms via messages.", fontSize = 13.sp, color = Color(0xFF664D03))
                     }
                 }
+            }
+            TaskUiState.CLAIMED_VIEWER -> {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = AccentOrange.copy(alpha = 0.12f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🔒", fontSize = 24.sp)
+                        Spacer(Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                "Task Claimed",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AccentOrange
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "This task is currently claimed by ${task.claimedByName ?: "a helper"} and is in progress.",
+                                fontSize = 13.sp,
+                                color = Muted
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                ChatWithPosterButton(
+                    task = task,
+                    viewModel = viewModel,
+                    navController = navController,
+                    label = "💬 Chat with Poster"
+                )
             }
             TaskUiState.VISITOR_MUST_LOGIN -> {
                 LoginPrompt(navController)
@@ -382,5 +415,91 @@ fun TaskActionSection(
             },
             isLoading = isClaiming
         )
+    }
+}
+
+@Composable
+fun ChatWithPosterButton(
+    task: Task,
+    viewModel: TaskDetailViewModel,
+    navController: NavController,
+    modifier: Modifier = Modifier.fillMaxWidth().height(52.dp),
+    label: String = "💬 Chat with Poster"
+) {
+    var isOpeningChat by remember { mutableStateOf(false) }
+
+    OutlinedButton(
+        onClick = { 
+            if (!isOpeningChat) {
+                isOpeningChat = true
+                viewModel.messagePoster(task._id, task.posterId) { convId ->
+                    isOpeningChat = false
+                    try {
+                        navController.navigate("chat/$convId")
+                    } catch (e: Exception) {
+                        try {
+                            navController.navigate("messages/$convId")
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+        },
+        enabled = true,
+        modifier = modifier,
+        border = BorderStroke(1.dp, PrimaryDark),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark)
+    ) {
+        if (isOpeningChat) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = PrimaryDark, strokeWidth = 2.dp)
+            Spacer(Modifier.width(8.dp))
+            Text("Opening...")
+        } else {
+            Icon(Icons.Default.Chat, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(label)
+        }
+    }
+}
+
+@Composable
+fun ChatWithMessageHelperButton(
+    task: Task,
+    viewModel: TaskDetailViewModel,
+    navController: NavController,
+    modifier: Modifier = Modifier.fillMaxWidth().height(52.dp),
+    label: String = "💬 Message Helper"
+) {
+    var isOpeningChat by remember { mutableStateOf(false) }
+
+    OutlinedButton(
+        onClick = { 
+            if (!isOpeningChat) {
+                isOpeningChat = true
+                viewModel.messagePoster(task._id, task.claimedBy ?: "") { convId ->
+                    isOpeningChat = false
+                    try {
+                        navController.navigate("chat/$convId")
+                    } catch (e: Exception) {
+                        try {
+                            navController.navigate("messages/$convId")
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+        },
+        enabled = true,
+        modifier = modifier,
+        border = BorderStroke(1.dp, PrimaryDark),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark)
+    ) {
+        if (isOpeningChat) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = PrimaryDark, strokeWidth = 2.dp)
+            Spacer(Modifier.width(8.dp))
+            Text("Opening...")
+        } else {
+            Icon(Icons.Default.Chat, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(label)
+        }
     }
 }

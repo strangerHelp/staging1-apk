@@ -342,6 +342,7 @@ fun RejectionDialog(
 ) {
     var reason by remember { mutableStateOf("") }
     AlertDialog(
+        properties = DialogProperties(decorFitsSystemWindows = false),
         onDismissRequest = onDismiss,
         title = { Text("Reject Proof") },
         text = {
@@ -633,6 +634,7 @@ fun EditTaskDialog(
     var budget by remember { mutableStateOf(task.budget.toString()) }
 
     AlertDialog(
+        properties = DialogProperties(decorFitsSystemWindows = false),
         onDismissRequest = onDismiss,
         title = { Text("Edit Task") },
         text = {

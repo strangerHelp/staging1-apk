@@ -15,6 +15,7 @@ import androidx.room.Room
 import com.strangerhelp.app.data.local.AppDatabase
 import com.strangerhelp.app.utils.AppLogger
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.launch
 
 class StrangerHelpApp : Application(), ImageLoaderFactory {
 
@@ -39,9 +40,22 @@ class StrangerHelpApp : Application(), ImageLoaderFactory {
         }
         
         com.strangerhelp.app.data.api.ApiClient.init(this)
+        com.strangerhelp.app.utils.NetworkMonitor.init(this)
         setupBackgroundSync()
         com.strangerhelp.app.utils.BatteryMonitor.init(this)
         com.strangerhelp.app.util.MapHelper.initMap(this)
+
+        // Seed initial tasks in Room database if empty so user always sees tasks even before network loads
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                if (database.taskDao().getAllTasksList().isEmpty()) {
+                    database.taskDao().insertTasks(com.strangerhelp.app.data.repository.DEFAULT_SEED_TASKS)
+                }
+            } catch (e: Exception) {
+                AppLogger.e("StrangerHelpApp", "Failed to seed default tasks", e)
+            }
+        }
+
         AppLogger.i("StrangerHelpApp", "Application started successfully.")
     }
     

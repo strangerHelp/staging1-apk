@@ -3,6 +3,7 @@ package com.strangerhelp.app.ui.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -39,7 +40,7 @@ val verifiedCyanText = Color(0xFF00838F)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun LandingScreen(onLoginClick: () -> Unit) {
+fun LandingScreen(onLoginClick: () -> Unit, onExploreClick: () -> Unit = onLoginClick) {
     val scrollState = rememberScrollState()
 
     Column(
@@ -87,7 +88,7 @@ fun LandingScreen(onLoginClick: () -> Unit) {
                 shape = RoundedCornerShape(12.dp),
                 color = Color.White,
                 border = border(1.dp, Color.Black.copy(alpha = 0.1f)),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().clickable { onExploreClick() }
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("What do you need done, and where?", color = MutedGray, fontSize = 14.sp)
@@ -98,17 +99,30 @@ fun LandingScreen(onLoginClick: () -> Unit) {
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            Button(
-                onClick = { /*TODO*/ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Post a task", color = TextDark, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TextDark)
+                Button(
+                    onClick = onLoginClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                ) {
+                    Text("Post a task", color = TextDark, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+                OutlinedButton(
+                    onClick = onExploreClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.5.dp, TextDark)
+                ) {
+                    Text("Browse Tasks", color = TextDark, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
             }
             
             Spacer(modifier = Modifier.height(40.dp))

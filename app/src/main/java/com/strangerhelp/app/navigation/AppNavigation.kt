@@ -82,9 +82,35 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector,
 val bottomNavItems = listOf(Screen.Feed, Screen.Tasks, Screen.Post, Screen.Chat, Screen.Profile)
 
 @Composable
-fun AppNavigation(user: User, onLogout: () -> Unit) {
+fun AppNavigation(user: User, initialDeepLink: String? = null, onLogout: () -> Unit) {
     val navController = rememberNavController()
     val chatViewModel: ChatViewModel = viewModel()
+
+    LaunchedEffect(Unit) {
+        DeepLinkHandler.links.collect { link ->
+            val route = when (link) {
+                is DeepLink.TaskDetail -> "task/${link.taskId}"
+                is DeepLink.ChatDetail -> "chat/${link.conversationId}"
+                is DeepLink.UserProfile -> "profile/${link.userId}"
+                is DeepLink.MeetDetail -> "meet_detail/${link.meetId}"
+                is DeepLink.ResetPassword -> "reset-password?token=${link.token}"
+                is DeepLink.VerifyEmail -> "profile"
+                DeepLink.Home -> Screen.Feed.route
+            }
+            try {
+                navController.navigate(route) {
+                    launchSingleTop = true
+                    restoreState = false
+                    popUpTo(Screen.Feed.route) { inclusive = false; saveState = true }
+                }
+            } catch (t: Throwable) {
+                navController.navigate(Screen.Feed.route) {
+                    popUpTo(0)
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
 
     val meetViewModel: MeetViewModel = viewModel(
         factory = MeetViewModelFactory(
@@ -344,12 +370,30 @@ fun AppNavigation(user: User, onLogout: () -> Unit) {
                 ) { entry ->
                     TaskDetailScreen(navController, user, entry.arguments?.getString("taskId") ?: "")
                 }
+
+                composable(
+                    "task_detail/{taskId}",
+                    arguments = listOf(navArgument("taskId") { type = NavType.StringType })
+                ) { entry ->
+                    TaskDetailScreen(navController, user, entry.arguments?.getString("taskId") ?: "")
+                }
                 
                 composable(
                     "chat/{convId}",
                     arguments = listOf(navArgument("convId") { type = NavType.StringType })
                 ) { entry ->
                     ChatDetailScreen(conversationId = entry.arguments?.getString("convId") ?: "", viewModel = chatViewModel, navController = navController)
+                }
+
+                composable(
+                    "messages/{convId}",
+                    arguments = listOf(navArgument("convId") { type = NavType.StringType })
+                ) { entry ->
+                    ChatDetailScreen(conversationId = entry.arguments?.getString("convId") ?: "", viewModel = chatViewModel, navController = navController)
+                }
+
+                composable("messages") {
+                    ChatListScreen(viewModel = chatViewModel, navController = navController)
                 }
             }
         }

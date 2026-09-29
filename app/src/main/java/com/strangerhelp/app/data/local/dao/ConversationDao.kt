@@ -15,6 +15,15 @@ interface ConversationDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertConversations(conversations: List<Conversation>) : List<Long>
 
+    @Query("SELECT * FROM conversations WHERE taskId = :taskId LIMIT 1")
+    suspend fun getConversationByTaskId(taskId: String): Conversation?
+
+    @Query("SELECT * FROM conversations WHERE _id = :id LIMIT 1")
+    suspend fun getConversationById(id: String): Conversation?
+
+    @Query("SELECT * FROM conversations ORDER BY lastMessageAt DESC")
+    suspend fun getAllConversationsList(): List<Conversation>
+
     @Query("DELETE FROM conversations")
     suspend fun clearConversations() : Int
 }

@@ -58,6 +58,7 @@ fun ClaimDialog(
     var message by remember { mutableStateOf("") }
 
     AlertDialog(
+        properties = androidx.compose.ui.window.DialogProperties(decorFitsSystemWindows = false),
         onDismissRequest = onDismiss,
         title = { Text(if (isGroupTask) "Request to Join" else "Request to Claim") },
         text = {
@@ -108,7 +109,8 @@ fun ClaimDialog(
 class TaskDetailViewModelFactory : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         val api = ApiClient.api
-        val repository = TaskRepository(api)
+        val db = try { com.strangerhelp.app.StrangerHelpApp.instance.database } catch (_: Exception) { null }
+        val repository = TaskRepository(api, db?.taskDao())
         @Suppress("UNCHECKED_CAST")
         return TaskDetailViewModel(repository) as T
     }

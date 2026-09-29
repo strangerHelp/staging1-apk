@@ -69,6 +69,7 @@ fun EditProfileScreen(
     val handleError = handle == "ravi_kumar" // Mock error state
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Edit Profile", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
@@ -141,6 +142,7 @@ fun EditProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally

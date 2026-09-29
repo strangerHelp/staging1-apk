@@ -375,4 +375,122 @@ class AppStabilityTest {
         assertFalse("Open tasks must not appear in Completed tab", completedTasks.contains(task1PostedByMe))
         assertFalse("In-progress tasks must not appear in Completed tab", completedTasks.contains(task2PostedByMeClaimedByOther))
     }
+
+    @Test
+    fun testOfflineTaskCachingAndFiltering() {
+        val cachedTasks = listOf(
+            Task(
+                _id = "cached_1",
+                title = "Need someone to pick up documents",
+                description = "Urgent pickup from bank in Indiranagar",
+                category = "Document Submission",
+                location = "Indiranagar",
+                budget = 250,
+                status = "open",
+                urgent = 1
+            ),
+            Task(
+                _id = "cached_2",
+                title = "Pet dog walking in evening",
+                description = "Walk friendly golden retriever",
+                category = "Other",
+                location = "Koramangala",
+                budget = 150,
+                status = "open",
+                urgent = 0
+            ),
+            Task(
+                _id = "cached_3",
+                title = "Queue standing at passport office",
+                description = "Need spot holder from 8 AM",
+                category = "Queue Standing",
+                location = "Indiranagar",
+                budget = 500,
+                status = "open",
+                urgent = 1
+            )
+        )
+
+        // Test Category filtering on cached tasks
+        val docTasks = cachedTasks.filter { it.category == "Document Submission" }
+        assertEquals(1, docTasks.size)
+        assertEquals("cached_1", docTasks.first()._id)
+
+        // Test Search query filtering on cached tasks
+        val query = "indiranagar"
+        val queryMatches = cachedTasks.filter {
+            it.title.contains(query, ignoreCase = true) ||
+            it.description.contains(query, ignoreCase = true) ||
+            it.location.contains(query, ignoreCase = true)
+        }
+        assertEquals(2, queryMatches.size)
+        assertTrue(queryMatches.any { it._id == "cached_1" })
+        assertTrue(queryMatches.any { it._id == "cached_3" })
+
+        // Test Sorting on cached tasks (budget high to low)
+        val sortedByBudget = cachedTasks.sortedByDescending { it.budget }
+        assertEquals("cached_3", sortedByBudget[0]._id) // 500
+        assertEquals("cached_1", sortedByBudget[1]._id) // 250
+        assertEquals("cached_2", sortedByBudget[2]._id) // 150
+
+        // Test Urgent sort
+        val sortedByUrgent = cachedTasks.sortedByDescending { it.urgent }
+        assertEquals(1, sortedByUrgent[0].urgent)
+        assertEquals(1, sortedByUrgent[1].urgent)
+        assertEquals(0, sortedByUrgent[2].urgent)
+    }
+
+    @Test
+    fun testTasksLoadResultOfflineStatus() {
+        val cachedTasks = listOf(
+            Task(_id = "offline_task_1", title = "Offline Task", status = "open")
+        )
+
+        val offlineResult = com.strangerhelp.app.data.repository.TasksLoadResult(
+            tasks = cachedTasks,
+            isOffline = true,
+            isFromCache = true,
+            hasMore = false,
+            errorMessage = "No internet connection. Showing cached tasks."
+        )
+
+        assertTrue("Result should indicate offline state", offlineResult.isOffline)
+        assertTrue("Result should indicate data is from local Room cache", offlineResult.isFromCache)
+        assertFalse("Offline mode should disable pagination", offlineResult.hasMore)
+        assertEquals(1, offlineResult.tasks.size)
+        assertEquals("offline_task_1", offlineResult.tasks.first()._id)
+    }
+
+    @Test
+    fun testRealJsonDeserialization() {
+        val sampleJson = """[{"_id":"8559f42316dd3a3f3d3080ba","id":"8559f42316dd3a3f3d3080ba","title":"Bike ","description":"Need bike service","category":"Task","budget":1500,"deadline":"Tomorrow","location":"Chennai","city":"","lat":13.1396159,"lng":80.138263,"anonymous":0,"urgent":1,"status":"open","posterId":"ae0287050347d4c7e5a94227","posterName":"Vadivelan Site","posterVerified":false,"claimedBy":null,"claimedByName":null,"maxClaimers":1,"completionStatus":"","attachmentCount":0,"proofCount":0,"createdAt":"2026-08-16 17:56:09","distance":2924.24},{"_id":"anon_task","id":"anon_task","title":"Anon Task","description":"Help me","category":"Task","budget":700,"deadline":"Today","location":"Bangalore","city":"Bangalore","lat":null,"lng":null,"anonymous":1,"urgent":1,"status":"open","posterId":null,"posterName":"Anonymous","posterVerified":false,"claimedBy":null,"claimedByName":null,"maxClaimers":50,"completionStatus":"","attachmentCount":0,"proofCount":0,"createdAt":"2026-09-21 10:01:30"}]"""
+        
+        val listType = object : com.google.gson.reflect.TypeToken<List<Task>>() {}.type
+        val tasks: List<Task> = com.google.gson.Gson().fromJson(sampleJson, listType)
+        assertEquals(2, tasks.size)
+        val sanitized = tasks.map { it.sanitized() }
+        assertEquals("8559f42316dd3a3f3d3080ba", sanitized[0]._id)
+        assertEquals("", sanitized[1].posterId) // was null in JSON, sanitized to ""
+        assertEquals("Anonymous", sanitized[1].posterName)
+    }
+
+    @Test
+    fun testDefaultSeedTasksAndFilter() {
+        val seeds = com.strangerhelp.app.data.repository.DEFAULT_SEED_TASKS
+        assertTrue(seeds.isNotEmpty())
+        assertEquals(5, seeds.size)
+        assertTrue(seeds.all { it._id.isNotBlank() && it.title.isNotBlank() })
+
+        val allSeeds = com.strangerhelp.app.data.repository.filterSeedTasks(null, null)
+        assertEquals(5, allSeeds.size)
+
+        val taskSeeds = com.strangerhelp.app.data.repository.filterSeedTasks("Task", null)
+        assertTrue(taskSeeds.isNotEmpty())
+        assertTrue(taskSeeds.all { it.category == "Task" })
+
+        val querySeeds = com.strangerhelp.app.data.repository.filterSeedTasks(null, "bike")
+        assertEquals(1, querySeeds.size)
+        assertEquals("8559f42316dd3a3f3d3080ba", querySeeds.first()._id)
+    }
 }
+

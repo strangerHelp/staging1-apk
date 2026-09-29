@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import com.strangerhelp.app.data.api.ApiClient
 import com.strangerhelp.app.data.model.User
 import com.strangerhelp.app.navigation.AppNavigation
+import com.strangerhelp.app.navigation.DeepLinkHandler
 import com.strangerhelp.app.ui.screens.auth.LoginScreen
 import com.strangerhelp.app.ui.screens.LandingScreen
 import com.strangerhelp.app.ui.theme.StrangerHelpTheme
@@ -74,9 +75,18 @@ class DataUriFetcher(
 }
 
 class MainActivity : ComponentActivity() {
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        DeepLinkHandler.handleIntent(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         
+        DeepLinkHandler.handleIntent(intent)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 100)
         }
@@ -114,8 +124,9 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize()
                 ) {
                     var currentUser by remember { mutableStateOf<User?>(null) }
+                    var isGuestMode by remember { mutableStateOf(false) }
                     var isLoading by remember { mutableStateOf(true) }
-                    val scope = rememberCoroutineScope() // Note: globalExceptionHandler could be added if passing context was easier in compose without breaking structure
+                    val scope = rememberCoroutineScope()
 
                     // Check if already logged in
                     LaunchedEffect(Unit) {
@@ -134,20 +145,27 @@ class MainActivity : ComponentActivity() {
                         }
                         else -> {
                             val user = currentUser
-                            if (user == null) {
+                            if (user == null && !isGuestMode) {
                                 com.strangerhelp.app.navigation.AuthNavigation(
                                     onLoginSuccess = { loggedInUser ->
                                         currentUser = loggedInUser
+                                    },
+                                    onExploreGuest = {
+                                        isGuestMode = true
                                     }
                                 )
                             } else {
+                                val deepLink = intent?.getStringExtra("deep_link")
+                                val activeUser = user ?: User(id = "guest", name = "Guest", email = "guest@strangerhelp.com")
                                 AppNavigation(
-                                    user = user,
+                                    user = activeUser,
+                                    initialDeepLink = deepLink,
                                     onLogout = {
                                         scope.launch {
                                             try { ApiClient.api.logout() } catch (_: Exception) {}
                                             ApiClient.clearSession()
                                             currentUser = null
+                                            isGuestMode = false
                                         }
                                     }
                                 )

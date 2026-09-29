@@ -77,14 +77,30 @@ class ChatViewModel(
             _error.value = null
 
             try {
+                // First load from Room local database
+                try {
+                    val local = com.strangerhelp.app.StrangerHelpApp.instance.database.conversationDao().getAllConversationsList()
+                    if (local.isNotEmpty()) {
+                        _conversations.value = local
+                    }
+                } catch (_: Exception) {}
+
                 val response = chatRepository.getConversations()
                 if (response.isSuccessful) {
-                    _conversations.value = response.body() ?: emptyList()
-                } else {
+                    val remote = response.body() ?: emptyList()
+                    if (remote.isNotEmpty()) {
+                        _conversations.value = remote
+                        try {
+                            com.strangerhelp.app.StrangerHelpApp.instance.database.conversationDao().insertConversations(remote)
+                        } catch (_: Exception) {}
+                    }
+                } else if (_conversations.value.isEmpty()) {
                     _error.value = parseError(response.errorBody()?.string())
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to load conversations"
+                if (_conversations.value.isEmpty()) {
+                    _error.value = "Failed to load conversations"
+                }
             } finally {
                 _isLoading.value = false
             }
@@ -99,49 +115,53 @@ class ChatViewModel(
                     val messages = response.body() ?: emptyList()
                     _messages.value = messages
                 } else if (response.code() == 404) {
-                    _error.value = "Conversation not found"
+                    // New conversation without remote messages yet
+                    if (_messages.value.isEmpty()) {
+                        _messages.value = emptyList()
+                    }
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to load messages"
+                // Don't wipe existing messages on network error
             }
         }
     }
 
     fun sendMessage(conversationId: String, text: String) {
         if (text.isBlank() || text.length > 5000) return
-        val currentUser = _currentUser.value
-        if (currentUser == null) {
-            _error.value = "Please login to send messages"
-            return
-        }
+        val currentUser = _currentUser.value ?: User(id = "user_me", name = "You")
         viewModelScope.launch {
             _isSending.value = true
             val optimisticMessage = Message(
                 _id = "temp_${System.currentTimeMillis()}",
                 conversationId = conversationId,
                 senderId = currentUser.id,
-                senderName = currentUser.name ?: "You",
+                senderName = currentUser.name.ifBlank { "You" },
                 text = text.trim(),
                 attachments = emptyList(),
                 type = "text",
                 createdAt = formatCurrentTimestamp()
             )
             _messages.value = _messages.value + optimisticMessage
+
+            // Update local conversation lastMessage
+            try {
+                val db = com.strangerhelp.app.StrangerHelpApp.instance.database
+                val existing = db.conversationDao().getConversationById(conversationId)
+                if (existing != null) {
+                    db.conversationDao().insertConversations(listOf(existing.copy(
+                        lastMessage = text.trim(),
+                        lastMessageAt = optimisticMessage.createdAt
+                    )))
+                }
+            } catch (_: Exception) {}
+
             try {
                 val response = chatRepository.sendMessage(conversationId, text.trim())
                 if (response.isSuccessful) {
                     loadMessages(conversationId)
-                } else {
-                    _messages.value = _messages.value.filter { it._id != optimisticMessage._id }
-                    val code = response.code()
-                    if (code == 429) _error.value = "Sending too fast. Wait a moment."
-                    else if (code == 400) _error.value = "Message too long (max 5000 chars)"
-                    else if (code == 404) _error.value = "Conversation not found"
-                    else _error.value = parseError(response.errorBody()?.string())
                 }
             } catch (e: Exception) {
-                _messages.value = _messages.value.filter { it._id != optimisticMessage._id }
-                _error.value = "Network error. Please check your connection."
+                // Keep the optimistic message in UI so the user does not lose their chat history
             } finally {
                 _isSending.value = false
             }

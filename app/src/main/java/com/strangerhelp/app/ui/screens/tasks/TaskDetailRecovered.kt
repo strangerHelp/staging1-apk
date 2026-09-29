@@ -65,6 +65,7 @@ fun ReviewDialog(
     var rating by remember { mutableStateOf(5) }
     var comment by remember { mutableStateOf("") }
     AlertDialog(
+        properties = androidx.compose.ui.window.DialogProperties(decorFitsSystemWindows = false),
         onDismissRequest = onDismiss,
         title = { Text("Leave a Review") },
         text = {

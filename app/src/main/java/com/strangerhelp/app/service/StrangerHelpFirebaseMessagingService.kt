@@ -31,13 +31,11 @@ class StrangerHelpFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun showNotification(title: String, body: String, link: String) {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            putExtra("deep_link", link)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        val notificationId = System.currentTimeMillis().toInt()
+        val pendingIntent = NotificationTapHandler.buildPendingIntent(
+            context = this,
+            link = link.ifBlank { "/tasks" },
+            notificationId = notificationId
         )
 
         val channelId = "strangerhelp_channel"
@@ -55,11 +53,11 @@ class StrangerHelpFirebaseMessagingService : FirebaseMessagingService() {
         val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle(title)
             .setContentText(body)
-            .setSmallIcon(R.mipmap.ic_launcher) // Fallback to launcher icon
+            .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
 
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+        notificationManager.notify(notificationId, notification)
     }
 }

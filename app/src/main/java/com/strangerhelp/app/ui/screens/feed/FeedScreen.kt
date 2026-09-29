@@ -522,26 +522,25 @@ fun RecentTasksSection(tasks: List<Task>, isLoading: Boolean, onTaskClick: (Stri
             Text("📋", fontSize = 24.sp)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Your Recent Tasks",
+                text = "Recent Community Tasks",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = PrimaryText
             )
         }
 
-        if (isLoading) {
+        if (isLoading && tasks.isEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 repeat(3) { TaskCardSkeleton() }
             }
+        } else if (tasks.isEmpty()) {
+            EmptyState(
+                icon = "📋",
+                title = "No tasks yet",
+                message = "Browse community tasks or be the first to post"
+            )
         } else {
-            val displayTasks = if (tasks.isEmpty()) {
-                listOf(
-                    Task(_id = "1", title = "Bike", description = "", category = "errand", budget = 1500, location = "", posterId = "", status = "open", urgent = 0, visibility = "public", createdAt = ""),
-                    Task(_id = "2", title = "Collect report card...", description = "", category = "errand", budget = 1800, location = "", posterId = "", status = "open", urgent = 0, visibility = "public", createdAt = "")
-                )
-            } else tasks.take(2)
-
-            displayTasks.forEach { task ->
+            tasks.take(5).forEach { task ->
                 RecentTaskCard(task = task, onClick = { onTaskClick(task._id) })
                 Spacer(modifier = Modifier.height(12.dp))
             }

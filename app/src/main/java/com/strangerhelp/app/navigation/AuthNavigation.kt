@@ -16,12 +16,15 @@ import com.strangerhelp.app.ui.screens.auth.LoginScreen
 import com.strangerhelp.app.ui.screens.auth.ResetPasswordScreen
 
 @Composable
-fun AuthNavigation(onLoginSuccess: (User) -> Unit) {
+fun AuthNavigation(onLoginSuccess: (User) -> Unit, onExploreGuest: () -> Unit = {}) {
     val navController = rememberNavController()
     
     NavHost(navController = navController, startDestination = "landing") {
         composable("landing") {
-            LandingScreen(onLoginClick = { navController.navigate("login") })
+            LandingScreen(
+                onLoginClick = { navController.navigate("login") },
+                onExploreClick = onExploreGuest
+            )
         }
         
         composable("login") {

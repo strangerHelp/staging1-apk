@@ -4,12 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import com.strangerhelp.app.StrangerHelpApp
 import com.strangerhelp.app.data.api.ApiClient
+import com.strangerhelp.app.data.model.Conversation
 import com.strangerhelp.app.data.model.Task
 import com.strangerhelp.app.data.model.User
 import com.strangerhelp.app.data.model.ClaimResponse
 import com.strangerhelp.app.data.model.ClaimTaskRequest
 import com.strangerhelp.app.data.repository.AuthRepository
+import com.strangerhelp.app.utils.AppLogger
 import com.strangerhelp.app.utils.BatteryMonitor
 import com.strangerhelp.app.data.repository.TaskRepository
 import kotlinx.coroutines.Job
@@ -31,12 +34,17 @@ enum class TaskUiState {
     HELPER_PROOF_PENDING, HELPER_PROOF_REJECTED, HELPER_COMPLETED,
     POSTER_WAITING, POSTER_HAS_REQUESTS, POSTER_CLAIMED_WAITING,
     POSTER_REVIEW_PROOF, POSTER_PROOF_REJECTED, POSTER_COMPLETED,
+    CLAIMED_VIEWER,
 }
 
 fun resolveState(task: Task?, me: User?): TaskUiState {
     if (task == null) return TaskUiState.VISITOR_MUST_LOGIN
     val isOwner = me != null && task.posterId == me.id
-    val isClaimer = me != null && (task.claimedBy == me.id || task.claimedUsers?.any { it.userId == me.id } == true)
+    val isClaimer = me != null && (
+        task.claimedBy == me.id ||
+        task.claimedUsers?.any { it.userId == me.id } == true ||
+        task.claimRequests?.any { it.requesterId == me.id && it.status == "approved" } == true
+    )
     val myReq = task.claimRequests?.find { it.requesterId == me?.id }
 
     return when {
@@ -59,6 +67,9 @@ fun resolveState(task: Task?, me: User?): TaskUiState {
         me != null && task.status == "open" && myReq?.status == "pending" -> TaskUiState.HELPER_REQUEST_PENDING
         me != null && task.status == "open" && myReq?.status == "rejected" -> TaskUiState.HELPER_REQUEST_REJECTED
         me != null && task.status == "open" -> TaskUiState.HELPER_CAN_REQUEST
+
+        // ---- CLAIMED TASK (Viewer/Visitor) ----
+        task.status == "claimed" -> TaskUiState.CLAIMED_VIEWER
 
         // ---- VISITOR ----
         me == null && task.status == "open" -> TaskUiState.VISITOR_MUST_LOGIN
@@ -151,29 +162,87 @@ class TaskDetailViewModel(
     }
 
     fun loadTask(taskId: String, isBackgroundSync: Boolean = false) {
+        val cleanTaskId = taskId.trim().removeSurrounding("\"").substringBefore('?').substringBefore('#').trimEnd('/')
+        if (cleanTaskId.isBlank()) {
+            if (!isBackgroundSync) _error.value = "Invalid task ID"
+            return
+        }
+
         viewModelScope.launch {
             if (_task.value == null) { _isLoading.value = true }
             if (isBackgroundSync) { _isSyncing.value = true }
             _error.value = null
 
+            // 1. Immediately display from Room local database cache if available
+            if (_task.value == null) {
+                try {
+                    val localTask = taskRepository.getTaskFromCache(cleanTaskId)
+                    if (localTask != null) {
+                        _task.value = localTask
+                        updateClaimState(localTask)
+                        _isLoading.value = false
+                    }
+                } catch (_: Exception) {}
+            }
+
+            // 2. Fetch fresh task from API
             try {
-                val response = taskRepository.getTask(taskId)
+                val response = taskRepository.getTask(cleanTaskId)
                 if (response.isSuccessful) {
-                    _task.value = response.body()
-                    updateClaimState(_task.value)
-                    _isOffline.value = false
+                    val taskBody = response.body()
+                    if (taskBody != null) {
+                        _task.value = taskBody
+                        updateClaimState(taskBody)
+                        _isOffline.value = false
+                    } else {
+                        val cached = taskRepository.getTaskFromCache(cleanTaskId)
+                        if (cached != null) {
+                            _task.value = cached
+                            updateClaimState(cached)
+                            _isOffline.value = true
+                        } else if (!isBackgroundSync) {
+                            _error.value = "Task not found or has been removed"
+                        }
+                    }
                 } else {
-                    if (!isBackgroundSync) {
-                        _error.value = parseError(response.errorBody()?.string())
+                    val cached = taskRepository.getTaskFromCache(cleanTaskId)
+                    if (cached != null) {
+                        _task.value = cached
+                        updateClaimState(cached)
+                        _isOffline.value = true
+                    } else if (!isBackgroundSync) {
+                        val errorDetail = parseError(response.errorBody()?.string())
+                        _error.value = if (response.code() == 404) {
+                            "Task not found or has been removed"
+                        } else {
+                            errorDetail.takeIf { it != "Something went wrong" } ?: "Failed to load task (${response.code()})"
+                        }
                     } else {
                         _isOffline.value = true
                     }
                 }
             } catch (e: Exception) {
-                if (!isBackgroundSync) {
-                    _error.value = "Failed to load task"
-                } else {
+                AppLogger.w("TaskDetailVM", "Exception loading task $cleanTaskId: ${e.message}")
+                val cached = taskRepository.getTaskFromCache(cleanTaskId)
+                if (cached != null) {
+                    _task.value = cached
+                    updateClaimState(cached)
                     _isOffline.value = true
+                } else if (_task.value == null) {
+                    _isOffline.value = true
+                    val fallback = Task(
+                        _id = cleanTaskId,
+                        title = "Offline Task",
+                        description = "Viewing in offline mode. Connect to internet to see full details.",
+                        status = "open",
+                        deadline = "Today",
+                        budget = 0
+                    )
+                    _task.value = fallback
+                    updateClaimState(fallback)
+                    if (!isBackgroundSync) {
+                        _error.value = "Offline mode: viewing offline task"
+                    }
                 }
             } finally {
                 _isLoading.value = false
@@ -188,6 +257,10 @@ class TaskDetailViewModel(
             while (isActive) {
                 val delayTime = if (BatteryMonitor.isBatterySaverMode.value) 15000L else 5000L
                 delay(delayTime)
+                if (_isOffline.value || !com.strangerhelp.app.utils.NetworkMonitor.isCurrentlyOnline()) {
+                    delay(15000L)
+                    continue
+                }
                 _task.value?._id?.let { id ->
                     loadTask(id, isBackgroundSync = true)
                 }
@@ -239,17 +312,64 @@ class TaskDetailViewModel(
     }
 
     fun messagePoster(taskId: String, posterId: String, onResult: (conversationId: String) -> Unit) {
+        val currentTask = _task.value
+        val currentUserId = _currentUser.value?.id?.takeIf { it.isNotBlank() } ?: "current_user"
+        val currentUserName = _currentUser.value?.name?.takeIf { it.isNotBlank() } ?: "You"
+        val effectivePosterId = posterId.ifBlank { currentTask?.posterId.orEmpty().ifBlank { "poster_${taskId}" } }
+        val posterName = currentTask?.posterName?.takeIf { it.isNotBlank() } ?: "Poster"
+
         viewModelScope.launch {
+            val db = runCatching { StrangerHelpApp.instance.database }.getOrNull()
+            var conversationId: String? = null
+
+            // 1. Check local Room database first for existing conversation for this task
             try {
-                val body = mapOf("recipientId" to posterId, "taskId" to taskId)
-                val response = taskRepository.createConversation(body)
-                if (response.isSuccessful) {
-                    val conv = response.body()
-                    if (conv != null) {
-                        onResult(conv._id)
-                    }
+                val existing = db?.conversationDao()?.getConversationByTaskId(taskId)
+                    ?: db?.conversationDao()?.getConversationById("task_conv_$taskId")
+                if (existing != null && existing._id.isNotBlank()) {
+                    conversationId = existing._id
+                    AppLogger.d("TaskDetailVM", "Found existing local conversation: $conversationId for task $taskId")
                 }
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                AppLogger.w("TaskDetailVM", "Error checking existing local conversation", e)
+            }
+
+            // 2. Pre-create local/fallback conversation so ChatDetailScreen opens instantly
+            val finalConvId = conversationId ?: "task_conv_${taskId}"
+            try {
+                val fallbackConv = Conversation(
+                    _id = finalConvId,
+                    taskId = taskId,
+                    participants = listOf(currentUserId, effectivePosterId),
+                    participantNames = listOf(currentUserName, posterName),
+                    lastMessage = "Discussion for task: ${currentTask?.title.orEmpty()}",
+                    lastMessageAt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+                )
+                db?.conversationDao()?.insertConversations(listOf(fallbackConv))
+            } catch (e: Exception) {
+                AppLogger.w("TaskDetailVM", "Failed to cache fallback conversation", e)
+            }
+
+            // 3. Immediately trigger navigation callback so user is redirected to message page with 0 lag
+            AppLogger.i("TaskDetailVM", "Redirecting immediately to message page with conversationId: $finalConvId")
+            onResult(finalConvId)
+
+            // 4. In background, sync with server if not already a remote conversation
+            if (conversationId == null && effectivePosterId.isNotBlank() && !effectivePosterId.startsWith("poster_")) {
+                try {
+                    val body = mapOf("recipientId" to effectivePosterId, "taskId" to taskId)
+                    val response = taskRepository.createConversation(body)
+                    if (response.isSuccessful) {
+                        val conv = response.body()
+                        if (conv != null && conv._id.isNotBlank()) {
+                            AppLogger.d("TaskDetailVM", "Synced remote conversation: ${conv._id}")
+                            db?.conversationDao()?.insertConversations(listOf(conv))
+                        }
+                    }
+                } catch (e: Exception) {
+                    AppLogger.w("TaskDetailVM", "Background conversation sync failed: ${e.message}")
+                }
+            }
         }
     }
 

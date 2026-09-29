@@ -2,12 +2,17 @@ package com.strangerhelp.app.data.api
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.strangerhelp.app.data.api.interceptor.NetworkLoggingInterceptor
+import com.strangerhelp.app.data.api.interceptor.RetryWithExponentialBackoffInterceptor
+import com.strangerhelp.app.utils.AppLogger
 import okhttp3.*
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 object ApiClient {
+    private const val TAG = "ApiClient"
     private const val BASE_URL = "https://strangerhelp.com/"
     private const val PREFS_NAME = "strangerhelp_cookies"
 
@@ -27,41 +32,89 @@ object ApiClient {
                 }
             }
         }
+        AppLogger.d(TAG, "Initialized with ${cookieStore.size} cached session cookies.")
     }
 
     private val cookieJar = object : CookieJar {
         override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+            if (cookies.isEmpty()) return
             cookieStore.removeAll { existing -> cookies.any { it.name == existing.name } }
             cookieStore.addAll(cookies)
             // Persist
-            val set = cookieStore.map { "${it.name}|${it.value}|${it.path}" }.toSet()
-            prefs.edit().putStringSet("cookies", set).apply()
+            if (::prefs.isInitialized) {
+                val set = cookieStore.map { "${it.name}|${it.value}|${it.path}" }.toSet()
+                prefs.edit().putStringSet("cookies", set).apply()
+                AppLogger.d(TAG, "Saved ${cookies.size} cookies from ${url.host}")
+            }
         }
 
         override fun loadForRequest(url: HttpUrl): List<Cookie> = cookieStore
     }
 
-    private val client = OkHttpClient.Builder()
+    /**
+     * Enhanced OkHttpClient configured with:
+     * 1. 30s connection, read, and write timeouts for stability on variable mobile networks
+     * 2. HeaderInterceptor ensuring Origin, Referer, User-Agent, and Accept headers
+     * 3. RetryWithExponentialBackoffInterceptor for automatic retry on network drops and 5xx/429 errors
+     * 4. NetworkLoggingInterceptor for full request/response diagnostics, timing, and error body inspection
+     * 5. HttpLoggingInterceptor for verbose low-level debug logs
+     */
+    val okHttpClient: OkHttpClient = OkHttpClient.Builder()
+        .dns(FallbackDns())
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectionPool(ConnectionPool(5, 5, TimeUnit.MINUTES))
+        .retryOnConnectionFailure(true)
         .cookieJar(cookieJar)
         .addInterceptor { chain ->
             val request = chain.request().newBuilder()
-                .addHeader("Origin", "https://strangerhelp.com")
+                .header("Origin", "https://strangerhelp.com")
+                .header("Referer", "https://strangerhelp.com/")
+                .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) StrangerHelp-Android/1.0")
+                .header("Accept", "application/json, text/plain, */*")
                 .build()
             chain.proceed(request)
         }
-        .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
+        .addInterceptor(
+            RetryWithExponentialBackoffInterceptor(
+                maxRetries = 3,
+                initialDelayMs = 1000L,
+                maxDelayMs = 8000L,
+                backoffMultiplier = 2.0,
+                jitterFactor = 0.2
+            )
+        )
+        .addInterceptor(NetworkLoggingInterceptor(maxBodyPeekBytes = 8192L))
+        .addInterceptor(HttpLoggingInterceptor { message ->
+            AppLogger.d("OkHttp", message)
+        }.apply {
+            level = HttpLoggingInterceptor.Level.BASIC
+        })
         .build()
 
-    val api: StrangerHelpApi = Retrofit.Builder()
+    /**
+     * Custom lenient Gson converter preventing crashes from malformed JSON or type coercion mismatches
+     */
+    val gson = GsonFactory.createLenientGson()
+
+    /**
+     * Retrofit instance configured with custom OkHttpClient and Lenient GsonConverterFactory
+     */
+    val retrofit: Retrofit = Retrofit.Builder()
         .baseUrl(BASE_URL)
-        .client(client)
-        .addConverterFactory(GsonConverterFactory.create())
+        .client(okHttpClient)
+        .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
-        .create(StrangerHelpApi::class.java)
+
+    val api: StrangerHelpApi = retrofit.create(StrangerHelpApi::class.java)
 
     fun clearSession() {
         cookieStore.clear()
-        prefs.edit().remove("cookies").apply()
+        if (::prefs.isInitialized) {
+            prefs.edit().remove("cookies").apply()
+        }
+        AppLogger.i(TAG, "Cleared session cookies.")
     }
 
     fun injectCookies(cookieString: String) {
@@ -79,8 +132,11 @@ object ApiClient {
                 }
             }
         }
-        val set = cookieStore.map { "${it.name}|${it.value}|${it.path}" }.toSet()
-        prefs.edit().putStringSet("cookies", set).apply()
+        if (::prefs.isInitialized) {
+            val set = cookieStore.map { "${it.name}|${it.value}|${it.path}" }.toSet()
+            prefs.edit().putStringSet("cookies", set).apply()
+        }
+        AppLogger.i(TAG, "Injected ${cookieStore.size} cookies.")
     }
 
     fun hasSession(): Boolean = cookieStore.any { it.name == "session" }

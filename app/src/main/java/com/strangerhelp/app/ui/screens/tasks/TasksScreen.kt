@@ -1,7 +1,12 @@
 package com.strangerhelp.app.ui.screens.tasks
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,6 +40,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.platform.testTag
 import com.strangerhelp.app.data.api.ApiClient
 import com.strangerhelp.app.data.model.Task
+import com.strangerhelp.app.data.repository.TaskRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -48,7 +54,6 @@ val CyanDeep = Color(0xFF29BC9B)
 
 
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
@@ -57,10 +62,22 @@ fun TasksScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val database = (context.applicationContext as StrangerHelpApp).database
-    val viewModel: TasksViewModel = viewModel(factory = TasksViewModelFactory(database.searchHistoryDao()))
+    val viewModel: TasksViewModel = viewModel(
+        factory = TasksViewModelFactory(
+            dao = database.searchHistoryDao(),
+            repository = TaskRepository(ApiClient.api, database.taskDao())
+        )
+    )
     val focusManager = LocalFocusManager.current
     val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
     
+    val tasks by viewModel.tasks.collectAsStateWithLifecycle()
+    val loading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val loadingMore by viewModel.isLoadingMore.collectAsStateWithLifecycle()
+    val isOffline by viewModel.isOffline.collectAsStateWithLifecycle()
+    val isFromCache by viewModel.isFromCache.collectAsStateWithLifecycle()
+    val hasMore by viewModel.hasMore.collectAsStateWithLifecycle()
+
     var searchQuery by remember { mutableStateOf("") }
     var debouncedQuery by remember { mutableStateOf("") }
     var isSearchFocused by remember { mutableStateOf(false) }
@@ -70,14 +87,6 @@ fun TasksScreen(
     
     val categories = listOf("All", "Task", "Document Submission", "Photo Proof", "Parcel Pickup", "Queue Standing", "Verification", "Event / Group Work", "Other")
     
-    var tasks by remember { mutableStateOf(emptyList<Task>()) }
-    var loading by remember { mutableStateOf(true) }
-    var loadingMore by remember { mutableStateOf(false) }
-    var hasMore by remember { mutableStateOf(true) }
-    var offset by remember { mutableStateOf(0) }
-    val limit = 20
-    
-    val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
     // Location
@@ -96,59 +105,30 @@ fun TasksScreen(
         }
     }
 
-    fun fetchTasks(isLoadMore: Boolean = false) {
-        if (!isLoadMore) {
-            loading = true
-            offset = 0
-            hasMore = true
-        } else {
-            loadingMore = true
-        }
-
-        scope.launch {
-            try {
-                val cat = if (selectedCategory == "All") null else selectedCategory
-                val q = debouncedQuery.takeIf { it.isNotBlank() }
-                
-                val res = ApiClient.api.getTasks(
-                    category = cat,
-                    limit = limit,
-                    offset = offset,
-                    search = q
-                )
-                
-                if (res.isSuccessful) {
-                    val newTasks = res.body() ?: emptyList()
-                    if (isLoadMore) {
-                        tasks = tasks + newTasks
-                    } else {
-                        tasks = newTasks
-                    }
-                    hasMore = newTasks.size == limit
-                    offset += limit
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                loading = false
-                loadingMore = false
-            }
-        }
-    }
-
     LaunchedEffect(debouncedQuery, selectedCategory, sortBy) {
-        fetchTasks(isLoadMore = false)
+        viewModel.fetchTasks(
+            category = selectedCategory,
+            query = debouncedQuery.takeIf { it.isNotBlank() },
+            sortBy = sortBy,
+            isLoadMore = false
+        )
     }
 
     // Infinite scroll
     LaunchedEffect(listState.layoutInfo.visibleItemsInfo.lastOrNull()) {
         val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-        if (lastVisible != null && lastVisible.index >= tasks.size - 3 && hasMore && !loadingMore && !loading) {
-            fetchTasks(isLoadMore = true)
+        if (lastVisible != null && lastVisible.index >= tasks.size - 3 && hasMore && !loadingMore && !loading && !isOffline) {
+            viewModel.fetchTasks(
+                category = selectedCategory,
+                query = debouncedQuery.takeIf { it.isNotBlank() },
+                sortBy = sortBy,
+                isLoadMore = true
+            )
         }
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate("post") },
@@ -163,6 +143,7 @@ fun TasksScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
                 .background(Color.White)
         ) {
             // Search + Sort
@@ -491,6 +472,115 @@ fun TasksScreen(
                 }
             }
 
+            // Subtle UI Indicator: Offline & Room Local Cache Banner
+            AnimatedVisibility(
+                visible = isOffline && tasks.isNotEmpty(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .testTag("offline_cached_banner"),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFFFFBEB),
+                    border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                    shadowElevation = 1.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(Color(0xFFFEF3C7), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isOffline) Icons.Outlined.CloudOff else Icons.Outlined.Storage,
+                                    contentDescription = "Room Database Cache",
+                                    tint = Color(0xFFB45309),
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = if (isOffline) "Offline Mode" else "Cached Data",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF92400E)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = Color(0xFFFDE68A)
+                                    ) {
+                                        Text(
+                                            text = "ROOM DB",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF78350F),
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = if (isOffline) {
+                                        "Viewing ${tasks.size} cached ${if (tasks.size == 1) "task" else "tasks"} from local Room database"
+                                    } else {
+                                        "Viewing cached tasks from local Room database"
+                                    },
+                                    fontSize = 11.sp,
+                                    color = Color(0xFFB45309).copy(alpha = 0.9f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        // Sync / Retry button
+                        TextButton(
+                            onClick = {
+                                viewModel.fetchTasks(
+                                    category = selectedCategory,
+                                    query = debouncedQuery.takeIf { it.isNotBlank() },
+                                    sortBy = sortBy,
+                                    isLoadMore = false
+                                )
+                            },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                containerColor = Color(0xFFFEF3C7),
+                                contentColor = Color(0xFF92400E)
+                            ),
+                            modifier = Modifier
+                                .height(32.dp)
+                                .testTag("offline_retry_button")
+                        ) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = "Retry connection",
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text("Sync", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
             // Task List
             if (loading && tasks.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -498,14 +588,47 @@ fun TasksScreen(
                 }
             } else if (tasks.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("📭", fontSize = 48.sp)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    ) {
+                        Text(if (isOffline) "⚡" else "📭", fontSize = 48.sp)
                         Spacer(Modifier.height(16.dp))
-                        Text("No tasks found", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = PrimaryDark)
-                        Text("Try adjusting your search", color = androidx.compose.ui.graphics.Color(0xFF666666), fontSize = 14.sp)
+                        Text(
+                            text = if (isOffline) "No cached tasks available" else "No tasks found",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = PrimaryDark
+                        )
+                        Text(
+                            text = if (isOffline) "Connect to the internet to load and cache tasks for offline viewing." else "Try adjusting your search or category",
+                            color = androidx.compose.ui.graphics.Color(0xFF666666),
+                            fontSize = 14.sp
+                        )
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = { navController.navigate("post") }, colors = ButtonDefaults.buttonColors(containerColor = AccentOrange)) {
-                            Text("Post a Task", color = Color.White)
+                        if (isOffline) {
+                            Button(
+                                onClick = {
+                                    viewModel.fetchTasks(
+                                        category = selectedCategory,
+                                        query = debouncedQuery.takeIf { it.isNotBlank() },
+                                        sortBy = sortBy,
+                                        isLoadMore = false
+                                    )
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentOrange)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Retry Connection", color = Color.White)
+                            }
+                        } else {
+                            Button(
+                                onClick = { navController.navigate("post") },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentOrange)
+                            ) {
+                                Text("Post a Task", color = Color.White)
+                            }
                         }
                     }
                 }
@@ -517,7 +640,11 @@ fun TasksScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(tasks, key = { it._id }) { task ->
-                        TaskCard(task = task, onClick = { navController.navigate("task/${task._id}") })
+                        TaskCard(
+                            task = task,
+                            isOffline = isOffline,
+                            onClick = { navController.navigate("task/${task._id}") }
+                        )
                     }
                     if (loadingMore) {
                         item {
@@ -533,7 +660,7 @@ fun TasksScreen(
 }
 
 @Composable
-fun TaskCard(task: Task, onClick: () -> Unit) {
+fun TaskCard(task: Task, isOffline: Boolean = false, onClick: () -> Unit) {
     Card(
         modifier = Modifier.animateContentSize().fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
@@ -587,6 +714,20 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                             }
                         }
                     }
+
+                    if (isOffline) {
+                        Surface(
+                            color = Color(0xFFFEF3C7),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color(0xFFFDE68A))
+                        ) {
+                            Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Outlined.Storage, contentDescription = "Room Cache", modifier = Modifier.size(11.dp), tint = Color(0xFFB45309))
+                                Spacer(Modifier.width(3.dp))
+                                Text("Room Cache", fontSize = 11.sp, color = Color(0xFF92400E), fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
                 }
                 
                 Text(
@@ -600,8 +741,9 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
             Spacer(Modifier.height(12.dp))
             
             // Title
+            val titleText = task.title.orEmpty()
             Text(
-                text = task.title,
+                text = titleText,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
                 color = PrimaryDark,
@@ -611,8 +753,9 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
             
             Spacer(Modifier.height(4.dp))
             
+            val descText = task.description.orEmpty()
             Text(
-                text = task.description.take(100) + if (task.description.length > 100) "..." else "",
+                text = descText.take(100) + if (descText.length > 100) "..." else "",
                 fontSize = 14.sp,
                 color = androidx.compose.ui.graphics.Color(0xFF666666),
                 maxLines = 2,
@@ -622,16 +765,18 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
             Spacer(Modifier.height(12.dp))
             
             // Location & Deadline
+            val locText = task.location.orEmpty().split(",").firstOrNull()?.trim().orEmpty().ifBlank { "Location" }
+            val deadlineText = task.deadline.orEmpty().ifBlank { "Today" }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(14.dp), tint = androidx.compose.ui.graphics.Color(0xFF666666))
                 Spacer(Modifier.width(4.dp))
-                Text(task.location.split(",").firstOrNull() ?: task.location, fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFF666666), maxLines = 1, modifier = Modifier.widthIn(max = 120.dp), overflow = TextOverflow.Ellipsis)
+                Text(locText, fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFF666666), maxLines = 1, modifier = Modifier.widthIn(max = 120.dp), overflow = TextOverflow.Ellipsis)
                 
                 Text("  •  ", fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFF666666))
                 
                 Icon(Icons.Outlined.Schedule, null, modifier = Modifier.size(14.dp), tint = androidx.compose.ui.graphics.Color(0xFF666666))
                 Spacer(Modifier.width(4.dp))
-                Text(task.deadline, fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFF666666))
+                Text(deadlineText, fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFF666666))
             }
             
             // ⭐ Attachment Indicator
@@ -669,6 +814,8 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                     modifier = Modifier.weight(1f)
                 ) {
                     // Avatar
+                    val posterNameSafe = task.posterName.orEmpty().trim().ifBlank { "User" }
+                    val avatarChar = if (task.anonymous == 1) "?" else (posterNameSafe.firstOrNull()?.uppercase() ?: "U")
                     Box(
                         modifier = Modifier
                             .size(20.dp)
@@ -677,7 +824,7 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (task.anonymous == 1) "?" else (task.posterName.firstOrNull()?.uppercase() ?: "U"),
+                            text = avatarChar,
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
                             color = PrimaryDark
@@ -686,8 +833,9 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                     Spacer(modifier = Modifier.width(6.dp))
 
                     // Name
+                    val displayName = if (task.anonymous == 1) "Anonymous" else posterNameSafe
                     Text(
-                        text = if (task.anonymous == 1) "Anonymous" else task.posterName.takeIf { it.isNotBlank() } ?: "User",
+                        text = displayName,
                         fontSize = 12.sp,
                         color = PrimaryDark,
                         maxLines = 1,
@@ -706,20 +854,22 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
 
                 // Right: Posted Time
                 Text(
-                    text = com.strangerhelp.app.utils.TimeUtils.getTimeAgo(task.createdAt),
+                    text = com.strangerhelp.app.utils.TimeUtils.getTimeAgo(task.createdAt.orEmpty()),
                     fontSize = 10.sp,
                     color = androidx.compose.ui.graphics.Color(0xFF666666),
                     modifier = Modifier.padding(end = 8.dp)
                 )
 
                 // Status Badge
-                val statusColor = when(task.status) {
+                val statusSafe = task.status.orEmpty().ifBlank { "open" }
+                val statusColor = when(statusSafe.lowercase()) {
                     "open" -> PrimaryDark
                     "claimed" -> AccentOrange
                     "completed" -> CyanDeep
                     else -> androidx.compose.ui.graphics.Color(0xFF666666)
                 }
-                Text(task.status.capitalize(), color = statusColor, fontSize = 12.sp)
+                val statusFormatted = statusSafe.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
+                Text(statusFormatted, color = statusColor, fontSize = 12.sp)
             }
         }
     }

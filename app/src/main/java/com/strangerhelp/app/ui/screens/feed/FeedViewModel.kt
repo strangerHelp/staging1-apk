@@ -31,6 +31,21 @@ class FeedViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(true)
     val isLoading = _isLoading.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            try {
+                val cached = db.taskDao().getAllTasksList()
+                if (cached.isNotEmpty()) {
+                    _recentTasks.value = cached.take(5)
+                } else {
+                    _recentTasks.value = com.strangerhelp.app.data.repository.DEFAULT_SEED_TASKS.take(5)
+                }
+            } catch (_: Exception) {
+                _recentTasks.value = com.strangerhelp.app.data.repository.DEFAULT_SEED_TASKS.take(5)
+            }
+        }
+    }
+
     fun loadHomeData(userId: String?) {
         viewModelScope.launch(StrangerHelpApp.globalExceptionHandler) {
             _isLoading.value = true
@@ -49,10 +64,25 @@ class FeedViewModel : ViewModel() {
                     }
                 }
 
-                // 2. Load Recent Tasks
-                val tasksRes = ApiClient.api.getTasks(mine = "true", limit = 5)
-                if (tasksRes.isSuccessful) {
-                    _recentTasks.value = tasksRes.body() ?: emptyList()
+                // 2. Load Recent Tasks with Room cache
+                try {
+                    val tasksRes = ApiClient.api.getTasks(limit = 10)
+                    if (tasksRes.isSuccessful) {
+                        val list = tasksRes.body() ?: emptyList()
+                        if (list.isNotEmpty()) {
+                            _recentTasks.value = list.take(5)
+                            db.taskDao().insertTasks(list)
+                        } else {
+                            val cached = db.taskDao().getAllTasksList()
+                            _recentTasks.value = if (cached.isNotEmpty()) cached.take(5) else com.strangerhelp.app.data.repository.DEFAULT_SEED_TASKS.take(5)
+                        }
+                    } else {
+                        val cached = db.taskDao().getAllTasksList()
+                        _recentTasks.value = if (cached.isNotEmpty()) cached.take(5) else com.strangerhelp.app.data.repository.DEFAULT_SEED_TASKS.take(5)
+                    }
+                } catch (e: Exception) {
+                    val cached = db.taskDao().getAllTasksList()
+                    _recentTasks.value = if (cached.isNotEmpty()) cached.take(5) else com.strangerhelp.app.data.repository.DEFAULT_SEED_TASKS.take(5)
                 }
 
                 // 3. Load Pulse
@@ -69,6 +99,12 @@ class FeedViewModel : ViewModel() {
                 throw e
             } catch (e: Exception) {
                 AppLogger.e("FeedViewModel", "Error loading home data", e)
+                try {
+                    val cached = db.taskDao().getAllTasksList()
+                    if (cached.isNotEmpty()) {
+                        _recentTasks.value = cached.take(5)
+                    }
+                } catch (_: Exception) {}
             }
             _isLoading.value = false
         }
