@@ -44,6 +44,7 @@ fun ChatDetailScreen(
     LaunchedEffect(conversationId) {
         android.util.Log.d("ChatDetail", "Received conversationId: $conversationId")
         if (conversationId.isNotEmpty()) {
+            viewModel.loadConversation(conversationId)
             viewModel.loadMessages(conversationId)
             viewModel.startPolling(conversationId)
             viewModel.loadConversations()
@@ -68,11 +69,16 @@ fun ChatDetailScreen(
     val otherParticipantName = remember(conversations, conversationId, currentUser) {
         val conv = conversations.find { it._id == conversationId }
         val userId = currentUser?.id ?: ""
-        conv?.participantNames
+        val userName = currentUser?.name ?: ""
+        val byId = conv?.participantNames
             ?.filterIndexed { index, _ ->
                 conv.participants.getOrNull(index) != userId
             }
-            ?.firstOrNull() ?: "User"
+            ?.firstOrNull { it.isNotBlank() }
+        val byName = conv?.participantNames
+            ?.firstOrNull { it.isNotBlank() && !it.equals(userName, ignoreCase = true) }
+        
+        byId ?: byName ?: "Poster"
     }
 
     Scaffold(

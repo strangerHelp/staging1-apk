@@ -1,5 +1,10 @@
 package com.strangerhelp.app.ui.screens.notifications
 
+import android.Manifest
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,11 +12,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -20,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.strangerhelp.app.data.model.Notification
+import com.strangerhelp.app.util.NotificationTester
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,9 +40,49 @@ fun NotificationsScreen(
     navController: NavController,
     viewModel: NotificationViewModel = viewModel(factory = NotificationViewModelFactory())
 ) {
+    val context = LocalContext.current
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+
+    var hasNotificationPermission by remember {
+        mutableStateOf(NotificationTester.isNotificationPermissionGranted(context))
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasNotificationPermission = isGranted
+        if (isGranted) {
+            NotificationTester.sendTestPushNotification(context)
+            viewModel.addTestNotification(
+                title = "Task Claimed! (Test)",
+                message = "A neighbor offered to help with your task. Tap to view.",
+                type = "task_claimed"
+            )
+            Toast.makeText(context, "Test notification sent! Check your notification bar.", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Notification permission is needed for status bar alerts.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun triggerTestNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            val sent = NotificationTester.sendTestPushNotification(context)
+            viewModel.addTestNotification(
+                title = "Task Claimed! (Test)",
+                message = "A neighbor offered to help with your task. Tap to view.",
+                type = "task_claimed"
+            )
+            if (sent) {
+                Toast.makeText(context, "Test notification sent! Check your status bar.", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Check app notification settings in Android Settings.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     // Start polling when screen is visible
     LaunchedEffect(Unit) {
@@ -48,6 +101,16 @@ fun NotificationsScreen(
             TopAppBar(
                 title = { Text("Notifications", fontWeight = FontWeight.Bold) },
                 actions = {
+                    IconButton(
+                        onClick = { triggerTestNotification() },
+                        modifier = Modifier.testTag("btn_test_notification")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.NotificationsActive,
+                            contentDescription = "Send Test Notification",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     if (notifications.isNotEmpty()) {
                         TextButton(
                             onClick = { viewModel.markAllAsRead() }
@@ -69,16 +132,31 @@ fun NotificationsScreen(
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (notifications.isEmpty()) {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
+                    .padding(padding)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 com.strangerhelp.app.ui.components.EmptyState(
                     icon = "🔔",
                     title = "No notifications yet",
-                    message = "We'll notify you when something happens"
+                    message = "We'll notify you when someone claims your task or sends a message."
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Test notification card in empty state
+                NotificationTestCard(
+                    hasPermission = hasNotificationPermission,
+                    onRequestPermission = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    },
+                    onSendTest = { triggerTestNotification() }
                 )
             }
         } else {
@@ -89,6 +167,20 @@ fun NotificationsScreen(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
+                item {
+                    // Diagnostic quick tester banner
+                    NotificationTestCard(
+                        hasPermission = hasNotificationPermission,
+                        onRequestPermission = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        },
+                        onSendTest = { triggerTestNotification() },
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+
                 items(notifications, key = { it.id }) { notification ->
                     NotificationItem(
                         notification = notification,
@@ -101,6 +193,96 @@ fun NotificationsScreen(
                             }
                         }
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationTestCard(
+    hasPermission: Boolean,
+    onRequestPermission: () -> Unit,
+    onSendTest: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (hasPermission) Icons.Outlined.CheckCircle else Icons.Outlined.WarningAmber,
+                        contentDescription = null,
+                        tint = if (hasPermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Notification System Status",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                }
+
+                Surface(
+                    color = if (hasPermission) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = if (hasPermission) "Active" else "Permission Needed",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (hasPermission) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Channel: strangerhelp_channel • Status bar push alerts & deep links",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (!hasPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    OutlinedButton(
+                        onClick = onRequestPermission,
+                        modifier = Modifier.weight(1f).testTag("btn_enable_notifications")
+                    ) {
+                        Text("Grant Permission", fontSize = 13.sp)
+                    }
+                }
+                Button(
+                    onClick = onSendTest,
+                    modifier = Modifier.weight(1f).testTag("btn_send_test_notification")
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.NotificationsActive,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Send Test Push", fontSize = 13.sp)
                 }
             }
         }

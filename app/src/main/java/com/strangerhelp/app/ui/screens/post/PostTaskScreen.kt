@@ -9,6 +9,8 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -630,26 +632,63 @@ fun PostTaskScreen(
         Card(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (uiState.isUrgent) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant
-            )
+                containerColor = if (uiState.isUrgent) Color(0xFFFEE2E2) else MaterialTheme.colorScheme.surfaceVariant
+            ),
+            border = if (uiState.isUrgent) BorderStroke(1.dp, Color(0xFFFCA5A5)) else null
         ) {
-            Row(
-                Modifier.fillMaxWidth().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("⚡ Urgent", fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Helpers will prioritize this",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Task Urgency & Priority", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Select urgency level so helpers can prioritize your task",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = uiState.isUrgent,
+                        onCheckedChange = { viewModel.updateUrgent(it) },
+                        colors = darkSwitchColors
                     )
                 }
-                Switch(
-                    checked = uiState.isUrgent,
-                    onCheckedChange = { viewModel.updateUrgent(it) },
-                    colors = darkSwitchColors
-                )
+
+                Spacer(Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("Low", "Medium", "High").forEach { level ->
+                        val isSelected = uiState.priority.equals(level, ignoreCase = true)
+                        val chipColor = when (level) {
+                            "High" -> Color(0xFFDC2626)
+                            "Medium" -> Color(0xFFD97706)
+                            else -> Color(0xFF059669)
+                        }
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { viewModel.updatePriority(level) }
+                                .testTag("priority_selector_${level.lowercase()}"),
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) chipColor else Color.White.copy(alpha = 0.8f),
+                            border = if (isSelected) null else BorderStroke(1.dp, Color(0xFFD1D5DB))
+                        ) {
+                            Text(
+                                text = if (level == "High") "⚡ High" else level,
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) Color.White else Color(0xFF374151)
+                            )
+                        }
+                    }
+                }
             }
         }
 

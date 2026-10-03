@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import com.strangerhelp.app.ui.components.TaskPriorityBadge
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -87,6 +88,10 @@ fun TaskDetailScreen(
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var showReviewDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(user) {
+        viewModel.setCurrentUser(user)
+    }
 
     LaunchedEffect(taskId) {
         viewModel.loadTask(taskId)
@@ -424,9 +429,10 @@ fun TaskInfoCard(task: Task) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (task.urgent == 1) {
-                    CategoryChip("⚡ URGENT", androidx.compose.ui.graphics.Color(0xFFEE0000).copy(alpha = 0.12f), androidx.compose.ui.graphics.Color(0xFFEE0000))
-                }
+                TaskPriorityBadge(
+                    priority = task.getEffectivePriority(),
+                    compact = false
+                )
                 if (task.visibility == "private") {
                     CategoryChip("🔒 Private", androidx.compose.ui.graphics.Color(0xFFF5F5F5), androidx.compose.ui.graphics.Color(0xFF666666))
                 }

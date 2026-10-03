@@ -432,19 +432,28 @@ fun ChatWithPosterButton(
         onClick = { 
             if (!isOpeningChat) {
                 isOpeningChat = true
-                viewModel.messagePoster(task._id, task.posterId) { convId ->
-                    isOpeningChat = false
-                    try {
-                        navController.navigate("chat/$convId")
-                    } catch (e: Exception) {
-                        try {
-                            navController.navigate("messages/$convId")
-                        } catch (_: Exception) {}
+                viewModel.messagePoster(
+                    taskId = task._id,
+                    posterId = task.posterId,
+                    onError = {
+                        isOpeningChat = false
+                    },
+                    onResult = { convId ->
+                        isOpeningChat = false
+                        if (convId.isNotBlank()) {
+                            try {
+                                navController.navigate("chat/$convId")
+                            } catch (e: Exception) {
+                                try {
+                                    navController.navigate("messages/$convId")
+                                } catch (_: Exception) {}
+                            }
+                        }
                     }
-                }
+                )
             }
         },
-        enabled = true,
+        enabled = !isOpeningChat,
         modifier = modifier,
         border = BorderStroke(1.dp, PrimaryDark),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark)
@@ -452,7 +461,7 @@ fun ChatWithPosterButton(
         if (isOpeningChat) {
             CircularProgressIndicator(modifier = Modifier.size(18.dp), color = PrimaryDark, strokeWidth = 2.dp)
             Spacer(Modifier.width(8.dp))
-            Text("Opening...")
+            Text("Opening chat...")
         } else {
             Icon(Icons.Default.Chat, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
@@ -475,19 +484,28 @@ fun ChatWithMessageHelperButton(
         onClick = { 
             if (!isOpeningChat) {
                 isOpeningChat = true
-                viewModel.messagePoster(task._id, task.claimedBy ?: "") { convId ->
-                    isOpeningChat = false
-                    try {
-                        navController.navigate("chat/$convId")
-                    } catch (e: Exception) {
-                        try {
-                            navController.navigate("messages/$convId")
-                        } catch (_: Exception) {}
+                viewModel.messagePoster(
+                    taskId = task._id,
+                    posterId = task.claimedBy ?: "",
+                    onError = {
+                        isOpeningChat = false
+                    },
+                    onResult = { convId ->
+                        isOpeningChat = false
+                        if (convId.isNotBlank()) {
+                            try {
+                                navController.navigate("chat/$convId")
+                            } catch (e: Exception) {
+                                try {
+                                    navController.navigate("messages/$convId")
+                                } catch (_: Exception) {}
+                            }
+                        }
                     }
-                }
+                )
             }
         },
-        enabled = true,
+        enabled = !isOpeningChat,
         modifier = modifier,
         border = BorderStroke(1.dp, PrimaryDark),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark)
@@ -495,7 +513,7 @@ fun ChatWithMessageHelperButton(
         if (isOpeningChat) {
             CircularProgressIndicator(modifier = Modifier.size(18.dp), color = PrimaryDark, strokeWidth = 2.dp)
             Spacer(Modifier.width(8.dp))
-            Text("Opening...")
+            Text("Opening chat...")
         } else {
             Icon(Icons.Default.Chat, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))

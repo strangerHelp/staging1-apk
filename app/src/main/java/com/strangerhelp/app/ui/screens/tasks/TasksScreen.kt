@@ -1,5 +1,10 @@
 package com.strangerhelp.app.ui.screens.tasks
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -40,7 +45,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.platform.testTag
 import com.strangerhelp.app.data.api.ApiClient
 import com.strangerhelp.app.data.model.Task
+import com.strangerhelp.app.data.model.TaskPriority
 import com.strangerhelp.app.data.repository.TaskRepository
+import com.strangerhelp.app.ui.components.TaskPriorityBadge
+import com.strangerhelp.app.utils.LocationHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -90,9 +98,78 @@ fun TasksScreen(
     val listState = rememberLazyListState()
 
     // Location
+    val coroutineScope = rememberCoroutineScope()
+    var isDetectingLocation by remember { mutableStateOf(false) }
+    var showPermissionPromptDialog by remember { mutableStateOf(false) }
     var locationState by remember { mutableStateOf("ask") } // "ask", "input", "active"
+    val vmCity by viewModel.selectedCity.collectAsStateWithLifecycle()
     var cityName by remember { mutableStateOf("Mumbai") }
+    var showLocationDialog by remember { mutableStateOf(false) }
     var sortExpanded by remember { mutableStateOf(false) }
+    val selectedPriority by viewModel.selectedPriority.collectAsStateWithLifecycle()
+
+    fun detectCurrentLocationAndRefresh() {
+        isDetectingLocation = true
+        coroutineScope.launch {
+            try {
+                val loc = LocationHelper(context).getCurrentLocation()
+                if (loc != null) {
+                    val placeName = resolveLocationName(context, loc.latitude, loc.longitude)
+                    cityName = placeName
+                    viewModel.setLocation(placeName, loc.latitude, loc.longitude)
+                    viewModel.fetchTasks(
+                        category = selectedCategory,
+                        query = debouncedQuery.takeIf { it.isNotBlank() },
+                        sortBy = sortBy,
+                        locationName = placeName,
+                        priority = selectedPriority,
+                        lat = loc.latitude,
+                        lng = loc.longitude,
+                        isLoadMore = false
+                    )
+                } else {
+                    showLocationDialog = true
+                }
+            } catch (_: Exception) {
+                showLocationDialog = true
+            } finally {
+                isDetectingLocation = false
+            }
+        }
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+        if (fineGranted || coarseGranted) {
+            detectCurrentLocationAndRefresh()
+        } else {
+            showLocationDialog = true
+        }
+    }
+
+    fun onChangeLocationClick() {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasPermission) {
+            showPermissionPromptDialog = true
+        } else {
+            showLocationDialog = true
+        }
+    }
+
+    LaunchedEffect(vmCity) {
+        if (vmCity.isNotBlank() && vmCity != cityName) {
+            cityName = vmCity
+        }
+    }
 
     LaunchedEffect(searchQuery) {
         delay(350)
@@ -105,11 +182,13 @@ fun TasksScreen(
         }
     }
 
-    LaunchedEffect(debouncedQuery, selectedCategory, sortBy) {
+    LaunchedEffect(debouncedQuery, selectedCategory, sortBy, cityName, selectedPriority) {
         viewModel.fetchTasks(
             category = selectedCategory,
             query = debouncedQuery.takeIf { it.isNotBlank() },
             sortBy = sortBy,
+            locationName = cityName,
+            priority = selectedPriority,
             isLoadMore = false
         )
     }
@@ -122,6 +201,8 @@ fun TasksScreen(
                 category = selectedCategory,
                 query = debouncedQuery.takeIf { it.isNotBlank() },
                 sortBy = sortBy,
+                locationName = cityName,
+                priority = selectedPriority,
                 isLoadMore = true
             )
         }
@@ -235,7 +316,13 @@ fun TasksScreen(
                         Icon(Icons.Default.FilterList, contentDescription = "Sort", tint = PrimaryDark)
                     }
                     DropdownMenu(expanded = sortExpanded, onDismissRequest = { sortExpanded = false }) {
-                        listOf("newest" to "Newest first", "distance" to "Nearest first", "budget_high" to "Budget: High to Low").forEach { (key, label) ->
+                        listOf(
+                            "newest" to "Newest first",
+                            "priority" to "Urgency: High to Low",
+                            "distance" to "Nearest first",
+                            "budget_high" to "Budget: High to Low",
+                            "budget_low" to "Budget: Low to High"
+                        ).forEach { (key, label) ->
                             DropdownMenuItem(
                                 text = { Text(label) },
                                 onClick = { sortBy = key; sortExpanded = false }
@@ -430,22 +517,180 @@ fun TasksScreen(
 
             // Location Banner
             Surface(
-                color = androidx.compose.ui.graphics.Color(0xFFF5F5F5),
-                modifier = Modifier.fillMaxWidth()
+                color = Color(0xFFF9FAFB),
+                border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("location_banner")
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF666666), modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Tasks near ", fontSize = 14.sp, color = androidx.compose.ui.graphics.Color(0xFF666666))
-                        Text(cityName, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = PrimaryDark)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onChangeLocationClick() }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(AccentOrange.copy(alpha = 0.12f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isDetectingLocation) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = AccentOrange
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Outlined.LocationOn,
+                                    contentDescription = "Location",
+                                    tint = AccentOrange,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Tasks near ", fontSize = 13.sp, color = Color(0xFF6B7280))
+                                Text(
+                                    text = cityName,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryDark,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            if (isDetectingLocation) {
+                                Text(
+                                    "Detecting nearby location...",
+                                    fontSize = 11.sp,
+                                    color = AccentOrange,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
-                    Text("Change", color = Color(0xFF007AFF), fontSize = 14.sp, modifier = Modifier.clickable { })
+                    OutlinedButton(
+                        onClick = { onChangeLocationClick() },
+                        modifier = Modifier
+                            .testTag("change_location_button")
+                            .heightIn(min = 36.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        border = BorderStroke(1.dp, Color(0xFF007AFF).copy(alpha = 0.5f)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF007AFF)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            "Change",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
+            }
+
+            if (showPermissionPromptDialog) {
+                AlertDialog(
+                    onDismissRequest = { showPermissionPromptDialog = false },
+                    icon = {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(AccentOrange.copy(alpha = 0.15f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Outlined.LocationOn,
+                                contentDescription = null,
+                                tint = AccentOrange,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    },
+                    title = {
+                        Text(
+                            "Allow Location Access",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = PrimaryDark
+                        )
+                    },
+                    text = {
+                        Text(
+                            "Allow StrangerHelp to access your location to automatically find and show tasks happening near you, or you can manually enter your preferred location.",
+                            fontSize = 14.sp,
+                            color = Color(0xFF4B5563),
+                            lineHeight = 20.sp
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                showPermissionPromptDialog = false
+                                locationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            },
+                            modifier = Modifier.testTag("allow_location_permission_button"),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryDark),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Outlined.MyLocation, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Allow Location")
+                            }
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                showPermissionPromptDialog = false
+                                showLocationDialog = true
+                            },
+                            modifier = Modifier.testTag("enter_location_manually_button")
+                        ) {
+                            Text("Enter Manually", color = Color(0xFF4B5563), fontWeight = FontWeight.SemiBold)
+                        }
+                    },
+                    modifier = Modifier.testTag("location_permission_prompt_dialog")
+                )
+            }
+
+            if (showLocationDialog) {
+                LocationChangeDialog(
+                    currentCity = cityName,
+                    onDismiss = { showLocationDialog = false },
+                    onLocationSelected = { newLocation, lat, lng ->
+                        cityName = newLocation
+                        viewModel.setLocation(newLocation, lat, lng)
+                        viewModel.fetchTasks(
+                            category = selectedCategory,
+                            query = debouncedQuery.takeIf { it.isNotBlank() },
+                            sortBy = sortBy,
+                            locationName = newLocation,
+                            priority = selectedPriority,
+                            lat = lat,
+                            lng = lng,
+                            isLoadMore = false
+                        )
+                    }
+                )
             }
 
             // Category Chips
@@ -468,6 +713,82 @@ fun TasksScreen(
                             fontSize = 14.sp,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
+                    }
+                }
+            }
+
+            // Priority Indicator Filter Chips
+            val priorityOptions = listOf<Pair<String, TaskPriority?>>(
+                "All Priorities" to null,
+                "High Urgency" to TaskPriority.HIGH,
+                "Medium Urgency" to TaskPriority.MEDIUM,
+                "Low Urgency" to TaskPriority.LOW
+            )
+
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(priorityOptions) { (label, prio) ->
+                    val isSelected = selectedPriority == prio
+                    val testTagKey = when (prio) {
+                        TaskPriority.HIGH -> "priority_filter_high"
+                        TaskPriority.MEDIUM -> "priority_filter_medium"
+                        TaskPriority.LOW -> "priority_filter_low"
+                        null -> "priority_filter_all"
+                    }
+                    val badgeColor = when (prio) {
+                        TaskPriority.HIGH -> Color(0xFFDC2626)
+                        TaskPriority.MEDIUM -> Color(0xFFD97706)
+                        TaskPriority.LOW -> Color(0xFF059669)
+                        null -> PrimaryDark
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .clickable {
+                                viewModel.setPriorityFilter(prio)
+                                viewModel.fetchTasks(
+                                    category = selectedCategory,
+                                    query = debouncedQuery.takeIf { it.isNotBlank() },
+                                    sortBy = sortBy,
+                                    locationName = cityName,
+                                    priority = prio,
+                                    isLoadMore = false
+                                )
+                            }
+                            .testTag(testTagKey),
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isSelected) badgeColor else Color(0xFFF3F4F6),
+                        border = if (isSelected) null else BorderStroke(1.dp, Color(0xFFE5E7EB))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (prio != null) {
+                                val icon = when (prio) {
+                                    TaskPriority.HIGH -> Icons.Default.Bolt
+                                    TaskPriority.MEDIUM -> Icons.Default.AccessTime
+                                    TaskPriority.LOW -> Icons.Default.CheckCircleOutline
+                                }
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp),
+                                    tint = if (isSelected) Color.White else badgeColor
+                                )
+                                Spacer(Modifier.width(4.dp))
+                            }
+                            Text(
+                                text = label,
+                                color = if (isSelected) Color.White else Color(0xFF374151),
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }
@@ -689,18 +1010,11 @@ fun TaskCard(task: Task, isOffline: Boolean = false, onClick: () -> Unit) {
                         }
                     }
                     
-                    if (task.urgent == 1) {
-                        Surface(
-                            color = androidx.compose.ui.graphics.Color(0xFFEE0000).copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Bolt, null, modifier = Modifier.size(12.dp), tint = androidx.compose.ui.graphics.Color(0xFFEE0000))
-                                Spacer(Modifier.width(2.dp))
-                                Text("Urgent", fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFFEE0000), fontWeight = FontWeight.Medium)
-                            }
-                        }
-                    }
+                    // Priority Indicator Badge
+                    TaskPriorityBadge(
+                        priority = task.getEffectivePriority(),
+                        compact = true
+                    )
                     
                     if (task.maxClaimers > 1) {
                         Surface(
@@ -765,13 +1079,23 @@ fun TaskCard(task: Task, isOffline: Boolean = false, onClick: () -> Unit) {
             Spacer(Modifier.height(12.dp))
             
             // Location & Deadline
-            val locText = task.location.orEmpty().split(",").firstOrNull()?.trim().orEmpty().ifBlank { "Location" }
+            val locText = task.location.orEmpty().split(",").firstOrNull()?.trim().orEmpty().ifBlank { task.city.ifBlank { "Location" } }
             val deadlineText = task.deadline.orEmpty().ifBlank { "Today" }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(14.dp), tint = androidx.compose.ui.graphics.Color(0xFF666666))
                 Spacer(Modifier.width(4.dp))
                 Text(locText, fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFF666666), maxLines = 1, modifier = Modifier.widthIn(max = 120.dp), overflow = TextOverflow.Ellipsis)
                 
+                if (task.distance != null && task.distance > 0.0) {
+                    Text("  •  ", fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFF666666))
+                    val distFormatted = if (task.distance < 1.0) {
+                        "${(task.distance * 1000).toInt()}m away"
+                    } else {
+                        "%.1f km away".format(task.distance)
+                    }
+                    Text(distFormatted, fontSize = 12.sp, color = Color(0xFF16A34A), fontWeight = FontWeight.SemiBold)
+                }
+
                 Text("  •  ", fontSize = 12.sp, color = androidx.compose.ui.graphics.Color(0xFF666666))
                 
                 Icon(Icons.Outlined.Schedule, null, modifier = Modifier.size(14.dp), tint = androidx.compose.ui.graphics.Color(0xFF666666))

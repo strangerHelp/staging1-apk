@@ -7,6 +7,7 @@ import com.strangerhelp.app.data.api.ApiClient
 import com.strangerhelp.app.data.local.dao.SearchHistoryDao
 import com.strangerhelp.app.data.model.SearchHistory
 import com.strangerhelp.app.data.model.Task
+import com.strangerhelp.app.data.model.TaskPriority
 import com.strangerhelp.app.data.repository.TaskRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -41,6 +42,18 @@ class TasksViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _selectedCity = MutableStateFlow("Mumbai")
+    val selectedCity: StateFlow<String> = _selectedCity.asStateFlow()
+
+    private val _userLat = MutableStateFlow<Double?>(null)
+    val userLat: StateFlow<Double?> = _userLat.asStateFlow()
+
+    private val _userLng = MutableStateFlow<Double?>(null)
+    val userLng: StateFlow<Double?> = _userLng.asStateFlow()
+
+    private val _selectedPriority = MutableStateFlow<TaskPriority?>(null)
+    val selectedPriority: StateFlow<TaskPriority?> = _selectedPriority.asStateFlow()
+
     private var currentOffset = 0
     private val pageSize = 20
 
@@ -61,10 +74,24 @@ class TasksViewModel(
         }
     }
 
+    fun setLocation(cityName: String, lat: Double? = null, lng: Double? = null) {
+        _selectedCity.value = cityName
+        _userLat.value = lat
+        _userLng.value = lng
+    }
+
+    fun setPriorityFilter(priority: TaskPriority?) {
+        _selectedPriority.value = priority
+    }
+
     fun fetchTasks(
         category: String? = null,
         query: String? = null,
         sortBy: String = "newest",
+        locationName: String? = null,
+        priority: TaskPriority? = _selectedPriority.value,
+        lat: Double? = null,
+        lng: Double? = null,
         isLoadMore: Boolean = false
     ) {
         if (!isLoadMore) {
@@ -77,6 +104,11 @@ class TasksViewModel(
             _isLoadingMore.value = true
         }
 
+        val effectiveCity = locationName ?: _selectedCity.value
+        val effectiveLat = lat ?: _userLat.value
+        val effectiveLng = lng ?: _userLng.value
+        val effectivePriority = priority ?: _selectedPriority.value
+
         viewModelScope.launch {
             try {
                 val cleanCat = if (category == "All") null else category
@@ -84,7 +116,10 @@ class TasksViewModel(
                     category = cleanCat,
                     limit = pageSize,
                     offset = currentOffset,
-                    search = query
+                    search = query,
+                    sort = sortBy,
+                    lat = effectiveLat,
+                    lng = effectiveLng
                 )
 
                 _isOffline.value = result.isOffline
@@ -103,7 +138,13 @@ class TasksViewModel(
                     }
                 }
 
-                _tasks.value = applySort(rawList, sortBy)
+                val processed = enrichAndFilterByLocation(rawList, effectiveCity, effectiveLat, effectiveLng)
+                val priorityFiltered = if (effectivePriority != null) {
+                    processed.filter { it.getEffectivePriority() == effectivePriority }
+                } else {
+                    processed
+                }
+                _tasks.value = applySort(priorityFiltered, sortBy)
                 if (result.tasks.isNotEmpty()) {
                     currentOffset += pageSize
                 }
@@ -113,7 +154,13 @@ class TasksViewModel(
                 _isFromCache.value = true
                 val cleanCat = if (category == "All") null else category
                 val cached = taskRepository.getCachedTasks(cleanCat, query)
-                _tasks.value = applySort(cached, sortBy)
+                val processed = enrichAndFilterByLocation(cached, effectiveCity, effectiveLat, effectiveLng)
+                val priorityFiltered = if (effectivePriority != null) {
+                    processed.filter { it.getEffectivePriority() == effectivePriority }
+                } else {
+                    processed
+                }
+                _tasks.value = applySort(priorityFiltered, sortBy)
                 _hasMore.value = false
                 _errorMessage.value = "Offline mode: viewing locally cached tasks"
             } finally {
@@ -123,12 +170,67 @@ class TasksViewModel(
         }
     }
 
+    private fun enrichAndFilterByLocation(
+        list: List<Task>,
+        locationName: String?,
+        lat: Double?,
+        lng: Double?
+    ): List<Task> {
+        val effectiveLoc = locationName?.trim()
+        val isAll = effectiveLoc.isNullOrBlank() ||
+                effectiveLoc.equals("All", ignoreCase = true) ||
+                effectiveLoc.equals("All Locations", ignoreCase = true)
+
+        // Calculate distance if user coordinates provided
+        val enriched = if (lat != null && lng != null) {
+            list.map { task ->
+                if (task.lat != null && task.lng != null) {
+                    val dist = haversine(lat, lng, task.lat, task.lng)
+                    task.copy(distance = dist)
+                } else {
+                    task
+                }
+            }
+        } else {
+            list
+        }
+
+        if (isAll) return enriched
+
+        val locQuery = effectiveLoc ?: ""
+        val matched = enriched.filter { task ->
+            task.city.contains(locQuery, ignoreCase = true) ||
+            task.location.contains(locQuery, ignoreCase = true) ||
+            locQuery.contains(task.city, ignoreCase = true) ||
+            (task.distance != null && task.distance <= 50.0) // Within 50km radius
+        }
+
+        // If tasks exist matching location, return them; otherwise return all with distance enriched
+        return if (matched.isNotEmpty()) matched else enriched
+    }
+
     private fun applySort(list: List<Task>, sortBy: String): List<Task> {
         return when (sortBy) {
             "budget_high" -> list.sortedByDescending { it.budget }
             "budget_low" -> list.sortedBy { it.budget }
-            "urgent" -> list.sortedByDescending { it.urgent }
+            "urgent", "priority" -> list.sortedWith(
+                compareBy<Task> { it.getEffectivePriority().ordinal }
+                    .thenByDescending { it.urgent }
+                    .thenByDescending { it.createdAt }
+            )
+            "nearest", "distance" -> list.sortedBy { it.distance ?: Double.MAX_VALUE }
             else -> list // Default newest (already ordered by createdAt in query/api)
+        }
+    }
+
+    fun buildLocationLabel(): String {
+        val lat = _userLat.value
+        val lng = _userLng.value
+        val city = _selectedCity.value
+        return if (lat != null && lng != null) {
+            "Tasks near you ($city)"
+        } else {
+            "Tasks in $city"
         }
     }
 

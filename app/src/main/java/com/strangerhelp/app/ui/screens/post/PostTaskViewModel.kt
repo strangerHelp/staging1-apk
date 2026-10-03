@@ -33,6 +33,7 @@ data class PostTaskUiState(
     val isAnonymous: Boolean = false,
     val maxClaimers: String = "2",
     val isUrgent: Boolean = false,
+    val priority: String = "Medium",
     val isPrivate: Boolean = false,
     val selectedFileBytes: List<ByteArray> = emptyList(),
     val voiceNoteBytes: ByteArray? = null,
@@ -113,7 +114,12 @@ class PostTaskViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun updateUrgent(value: Boolean) {
-        _uiState.update { it.copy(isUrgent = value) }
+        _uiState.update { it.copy(isUrgent = value, priority = if (value) "High" else "Medium") }
+    }
+
+    fun updatePriority(value: String) {
+        val isUrg = value.equals("High", ignoreCase = true)
+        _uiState.update { it.copy(priority = value, isUrgent = isUrg) }
     }
 
     fun updatePrivate(value: Boolean) {
@@ -335,6 +341,7 @@ class PostTaskViewModel(application: Application) : AndroidViewModel(application
                     .addFormDataPart("location", state.location)
                     .addFormDataPart("anonymous", if (state.isAnonymous) "true" else "false")
                     .addFormDataPart("urgent", if (state.isUrgent) "true" else "false")
+                    .addFormDataPart("priority", state.priority)
                     .addFormDataPart("visibility", if (state.isPrivate) "private" else "public")
 
                 if (state.category == "Event / Group Work") {

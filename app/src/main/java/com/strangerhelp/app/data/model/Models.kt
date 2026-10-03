@@ -36,6 +36,38 @@ data class User(
     val trustScore: Int = 0
 )
 
+enum class TaskPriority(val level: String, val displayName: String) {
+    HIGH("High", "High Urgency"),
+    MEDIUM("Medium", "Medium Urgency"),
+    LOW("Low", "Low Urgency");
+
+    companion object {
+        fun fromTask(task: Task): TaskPriority {
+            val p = task.priority.trim()
+            if (p.equals("high", ignoreCase = true) || p.equals("urgent", ignoreCase = true)) return HIGH
+            if (p.equals("medium", ignoreCase = true) || p.equals("med", ignoreCase = true)) return MEDIUM
+            if (p.equals("low", ignoreCase = true)) return LOW
+
+            if (task.urgent == 1) return HIGH
+            val titleLower = task.title.lowercase()
+            val descLower = task.description.lowercase()
+            if (titleLower.contains("urgent") || descLower.contains("urgent") ||
+                task.deadline.equals("Immediate", ignoreCase = true) ||
+                task.deadline.contains("hour", ignoreCase = true) ||
+                task.deadline.contains("mins", ignoreCase = true)) {
+                return HIGH
+            }
+            if (task.deadline.equals("Today", ignoreCase = true) || task.budget >= 1000 ||
+                task.category.contains("Parcel", ignoreCase = true) ||
+                task.category.contains("Queue", ignoreCase = true) ||
+                task.category.contains("Verification", ignoreCase = true)) {
+                return MEDIUM
+            }
+            return LOW
+        }
+    }
+}
+
 @Entity(tableName = "tasks")
 data class Task(
     @PrimaryKey @SerializedName(value = "_id", alternate = ["id"]) val _id: String = "",
@@ -50,6 +82,7 @@ data class Task(
     @SerializedName("lng") val lng: Double? = null,
     @SerializedName("anonymous") val anonymous: Int = 0,
     @SerializedName("urgent") val urgent: Int = 0,
+    @SerializedName(value = "priority", alternate = ["urgency", "urgency_level", "priority_level"]) val priority: String = "",
     @SerializedName("status") val status: String = "open",
     @SerializedName(value = "posterId", alternate = ["poster_id"]) val posterId: String = "",
     @SerializedName(value = "posterName", alternate = ["poster_name", "posted_by", "postedBy"]) val posterName: String = "",
@@ -72,7 +105,9 @@ data class Task(
     @SerializedName(value = "claimRequests", alternate = ["claim_requests"]) val claimRequests: List<ClaimRequest>? = emptyList(),
     @SerializedName(value = "claimedUsers", alternate = ["claimed_users"]) val claimedUsers: List<ClaimedUser>? = emptyList(),
     @SerializedName(value = "maxClaimers", alternate = ["max_claimers"]) val maxClaimers: Int = 1
-)
+) {
+    fun getEffectivePriority(): TaskPriority = TaskPriority.fromTask(this)
+}
 
 fun Task.sanitized(): Task {
     val idVal = (this._id as? String?).orEmpty()
@@ -82,6 +117,7 @@ fun Task.sanitized(): Task {
     val deadlineVal = (this.deadline as? String?).takeIf { !it.isNullOrBlank() } ?: "Today"
     val locVal = (this.location as? String?).orEmpty()
     val cityVal = (this.city as? String?).orEmpty()
+    val priorityVal = (this.priority as? String?).orEmpty()
     val statusVal = (this.status as? String?).takeIf { !it.isNullOrBlank() } ?: "open"
     val pIdVal = (this.posterId as? String?).orEmpty()
     val pNameVal = (this.posterName as? String?).orEmpty()
@@ -104,6 +140,7 @@ fun Task.sanitized(): Task {
         city = cityVal,
         anonymous = this.anonymous,
         urgent = this.urgent,
+        priority = priorityVal,
         status = statusVal,
         posterId = pIdVal,
         posterName = pNameVal,

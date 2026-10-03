@@ -38,14 +38,14 @@ enum class TaskUiState {
 }
 
 fun resolveState(task: Task?, me: User?): TaskUiState {
-    if (task == null) return TaskUiState.VISITOR_MUST_LOGIN
-    val isOwner = me != null && task.posterId == me.id
-    val isClaimer = me != null && (
+    if (task == null || me == null) return TaskUiState.VISITOR_MUST_LOGIN
+    val isOwner = task.posterId == me.id
+    val isClaimer = (
         task.claimedBy == me.id ||
         task.claimedUsers?.any { it.userId == me.id } == true ||
         task.claimRequests?.any { it.requesterId == me.id && it.status == "approved" } == true
     )
-    val myReq = task.claimRequests?.find { it.requesterId == me?.id }
+    val myReq = task.claimRequests?.find { it.requesterId == me.id }
 
     return when {
         // ---- POSTER ----
@@ -64,15 +64,13 @@ fun resolveState(task: Task?, me: User?): TaskUiState {
         isClaimer && task.status == "claimed" -> TaskUiState.HELPER_CLAIMED_CAN_TRACK
 
         // ---- HELPER (not yet claimed) ----
-        me != null && task.status == "open" && myReq?.status == "pending" -> TaskUiState.HELPER_REQUEST_PENDING
-        me != null && task.status == "open" && myReq?.status == "rejected" -> TaskUiState.HELPER_REQUEST_REJECTED
-        me != null && task.status == "open" -> TaskUiState.HELPER_CAN_REQUEST
+        task.status == "open" && myReq?.status == "pending" -> TaskUiState.HELPER_REQUEST_PENDING
+        task.status == "open" && myReq?.status == "rejected" -> TaskUiState.HELPER_REQUEST_REJECTED
+        task.status == "open" -> TaskUiState.HELPER_CAN_REQUEST
 
-        // ---- CLAIMED TASK (Viewer/Visitor) ----
+        // ---- CLAIMED TASK (Viewer) ----
         task.status == "claimed" -> TaskUiState.CLAIMED_VIEWER
 
-        // ---- VISITOR ----
-        me == null && task.status == "open" -> TaskUiState.VISITOR_MUST_LOGIN
         else -> TaskUiState.POSTER_COMPLETED   // fallback: view-only
     }
 }
@@ -148,6 +146,12 @@ class TaskDetailViewModel(
             } catch (e: Exception) {
                 // Ignore
             }
+        }
+    }
+
+    fun setCurrentUser(user: User?) {
+        if (user != null) {
+            _currentUser.value = user
         }
     }
 
@@ -311,65 +315,109 @@ class TaskDetailViewModel(
         }
     }
 
-    fun messagePoster(taskId: String, posterId: String, onResult: (conversationId: String) -> Unit) {
+    fun messagePoster(
+        taskId: String,
+        posterId: String = "",
+        onError: (String) -> Unit = {},
+        onResult: (conversationId: String) -> Unit
+    ) {
         val currentTask = _task.value
-        val currentUserId = _currentUser.value?.id?.takeIf { it.isNotBlank() } ?: "current_user"
-        val currentUserName = _currentUser.value?.name?.takeIf { it.isNotBlank() } ?: "You"
-        val effectivePosterId = posterId.ifBlank { currentTask?.posterId.orEmpty().ifBlank { "poster_${taskId}" } }
-        val posterName = currentTask?.posterName?.takeIf { it.isNotBlank() } ?: "Poster"
+        val me = _currentUser.value
+        val isPoster = me != null && currentTask != null && currentTask.posterId == me.id
+
+        // Determine recipient following strangerhelp platform logic:
+        val recipientId = if (posterId.isNotBlank() && !posterId.startsWith("poster_")) {
+            posterId
+        } else if (isPoster) {
+            currentTask?.claimedBy.orEmpty()
+        } else {
+            currentTask?.posterId.orEmpty()
+        }
+
+        if (recipientId.isBlank()) {
+            val msg = "Cannot message: no recipient found"
+            _error.value = msg
+            onError(msg)
+            return
+        }
 
         viewModelScope.launch {
             val db = runCatching { StrangerHelpApp.instance.database }.getOrNull()
-            var conversationId: String? = null
 
-            // 1. Check local Room database first for existing conversation for this task
+            // 0. Clean up any dummy task_conv_% records previously created so they never mask real chats
+            try {
+                db?.conversationDao()?.deleteDummyConversations()
+            } catch (_: Exception) {}
+
+            // 1. Check local Room database first for existing real server conversation for this task
             try {
                 val existing = db?.conversationDao()?.getConversationByTaskId(taskId)
-                    ?: db?.conversationDao()?.getConversationById("task_conv_$taskId")
-                if (existing != null && existing._id.isNotBlank()) {
-                    conversationId = existing._id
-                    AppLogger.d("TaskDetailVM", "Found existing local conversation: $conversationId for task $taskId")
+                if (existing != null && existing._id.isNotBlank() && !existing._id.startsWith("task_conv_")) {
+                    AppLogger.d("TaskDetailVM", "Found existing local conversation: ${existing._id} for task $taskId")
+                    onResult(existing._id)
+                    return@launch
                 }
             } catch (e: Exception) {
                 AppLogger.w("TaskDetailVM", "Error checking existing local conversation", e)
             }
 
-            // 2. Pre-create local/fallback conversation so ChatDetailScreen opens instantly
-            val finalConvId = conversationId ?: "task_conv_${taskId}"
+            // 2. Fetch or create real conversation from the backend API
             try {
-                val fallbackConv = Conversation(
-                    _id = finalConvId,
-                    taskId = taskId,
-                    participants = listOf(currentUserId, effectivePosterId),
-                    participantNames = listOf(currentUserName, posterName),
-                    lastMessage = "Discussion for task: ${currentTask?.title.orEmpty()}",
-                    lastMessageAt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-                )
-                db?.conversationDao()?.insertConversations(listOf(fallbackConv))
+                val body = mapOf("recipientId" to recipientId, "taskId" to taskId)
+                val response = kotlinx.coroutines.withTimeoutOrNull(5000L) {
+                    taskRepository.createConversation(body)
+                }
+                if (response != null && response.isSuccessful) {
+                    val conv = response.body()
+                    if (conv != null && conv._id.isNotBlank() && !conv._id.startsWith("task_conv_")) {
+                        AppLogger.d("TaskDetailVM", "Created/retrieved conversation from server: ${conv._id}")
+                        db?.conversationDao()?.insertConversations(listOf(conv))
+                        onResult(conv._id)
+                        return@launch
+                    }
+                }
             } catch (e: Exception) {
-                AppLogger.w("TaskDetailVM", "Failed to cache fallback conversation", e)
+                AppLogger.w("TaskDetailVM", "createConversation failed: ${e.message}")
             }
 
-            // 3. Immediately trigger navigation callback so user is redirected to message page with 0 lag
-            AppLogger.i("TaskDetailVM", "Redirecting immediately to message page with conversationId: $finalConvId")
-            onResult(finalConvId)
-
-            // 4. In background, sync with server if not already a remote conversation
-            if (conversationId == null && effectivePosterId.isNotBlank() && !effectivePosterId.startsWith("poster_")) {
-                try {
-                    val body = mapOf("recipientId" to effectivePosterId, "taskId" to taskId)
-                    val response = taskRepository.createConversation(body)
-                    if (response.isSuccessful) {
-                        val conv = response.body()
-                        if (conv != null && conv._id.isNotBlank()) {
-                            AppLogger.d("TaskDetailVM", "Synced remote conversation: ${conv._id}")
-                            db?.conversationDao()?.insertConversations(listOf(conv))
+            // 3. Fallback: check remote conversations list to see if a conversation already exists
+            try {
+                val convsResp = kotlinx.coroutines.withTimeoutOrNull(4000L) {
+                    ApiClient.api.getConversations()
+                }
+                if (convsResp != null && convsResp.isSuccessful) {
+                    val list = convsResp.body() ?: emptyList()
+                    if (list.isNotEmpty()) {
+                        db?.conversationDao()?.insertConversations(list)
+                        val match = list.find { it.taskId == taskId }
+                            ?: list.find { it.participants.contains(recipientId) }
+                        if (match != null && match._id.isNotBlank() && !match._id.startsWith("task_conv_")) {
+                            AppLogger.d("TaskDetailVM", "Found matching conversation in list: ${match._id}")
+                            onResult(match._id)
+                            return@launch
                         }
                     }
-                } catch (e: Exception) {
-                    AppLogger.w("TaskDetailVM", "Background conversation sync failed: ${e.message}")
                 }
+            } catch (e: Exception) {
+                AppLogger.w("TaskDetailVM", "getConversations list check failed: ${e.message}")
             }
+
+            // 4. Fallback: check cached conversations in Room with matching recipient
+            val cachedWithRecipient = try {
+                db?.conversationDao()?.getAllConversationsList()?.find {
+                    (it.taskId == taskId || it.participants.contains(recipientId)) && !it._id.startsWith("task_conv_")
+                }
+            } catch (_: Exception) { null }
+
+            if (cachedWithRecipient != null && cachedWithRecipient._id.isNotBlank()) {
+                onResult(cachedWithRecipient._id)
+                return@launch
+            }
+
+            // 5. If everything failed, inform user and do NOT navigate to a fake demo screen
+            val errorMsg = if (me == null) "Please log in to chat with the poster" else "Could not open conversation. Please check your internet connection and try again."
+            _error.value = errorMsg
+            onError(errorMsg)
         }
     }
 

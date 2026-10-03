@@ -18,7 +18,7 @@ import com.strangerhelp.app.data.local.dao.TaskDraftDao
 import com.strangerhelp.app.data.model.SearchHistory
 import com.strangerhelp.app.data.model.TaskDraft
 
-@Database(entities = [Task::class, Conversation::class, Notification::class, Meet::class, HelpRequest::class, SearchHistory::class, TaskDraft::class], version = 5, exportSchema = false)
+@Database(entities = [Task::class, Conversation::class, Notification::class, Meet::class, HelpRequest::class, SearchHistory::class, TaskDraft::class], version = 6, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao

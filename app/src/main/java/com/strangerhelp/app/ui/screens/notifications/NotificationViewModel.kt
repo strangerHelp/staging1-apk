@@ -94,6 +94,27 @@ class NotificationViewModel(
         }
     }
 
+    // ⭐ Inject test notification for verification
+    fun addTestNotification(
+        title: String = "Task Claimed! (Test)",
+        message: String = "A helper has claimed your task. Tap to view details and start chatting.",
+        type: String = "task_claimed",
+        link: String = "/tasks"
+    ) {
+        val testItem = Notification(
+            id = "test_${System.currentTimeMillis()}",
+            user_id = "test_user",
+            type = type,
+            title = title,
+            message = message,
+            link = link,
+            read = 0,
+            created_at = "Just now"
+        )
+        _notifications.value = listOf(testItem) + _notifications.value
+        _unreadCount.value = _unreadCount.value + 1
+    }
+
     // ⭐ Start polling
     fun startPolling() {
         pollJob?.cancel()

@@ -19,6 +19,10 @@ class ChatRepository(
         return api.getConversations()
     }
 
+    suspend fun getConversation(conversationId: String): Response<Conversation> {
+        return api.getConversation(conversationId)
+    }
+
     suspend fun getMessages(conversationId: String): Response<List<Message>> {
         return api.getMessages(conversationId)
     }

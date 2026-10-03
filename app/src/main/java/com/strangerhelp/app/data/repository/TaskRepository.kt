@@ -17,6 +17,17 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
 import java.io.File
 
+fun calculateDistanceKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val r = 6371.0 // Earth radius in km
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return r * c
+}
+
 val DEFAULT_SEED_TASKS: List<Task> = listOf(
     Task(
         _id = "8559f42316dd3a3f3d3080ba",
@@ -33,6 +44,7 @@ val DEFAULT_SEED_TASKS: List<Task> = listOf(
         posterId = "ae0287050347d4c7e5a94227",
         posterName = "Vadivelan Site",
         urgent = 1,
+        priority = "High",
         maxClaimers = 1,
         createdAt = "2026-08-16 17:56:09"
     ),
@@ -49,6 +61,7 @@ val DEFAULT_SEED_TASKS: List<Task> = listOf(
         posterId = "543a2adbf4cc043fcf9843b2",
         posterName = "Roshan Ahmed",
         urgent = 1,
+        priority = "High",
         maxClaimers = 10,
         createdAt = "2026-08-26 09:53:22"
     ),
@@ -65,6 +78,7 @@ val DEFAULT_SEED_TASKS: List<Task> = listOf(
         posterId = "2407c891b726f74e4337353e",
         posterName = "testuser",
         urgent = 0,
+        priority = "Low",
         maxClaimers = 1,
         createdAt = "2026-08-30 13:10:29"
     ),
@@ -80,13 +94,14 @@ val DEFAULT_SEED_TASKS: List<Task> = listOf(
         status = "open",
         posterName = "Anonymous",
         urgent = 1,
+        priority = "High",
         maxClaimers = 1,
         createdAt = "2026-08-26 06:13:39"
     ),
     Task(
         _id = "0447f4f372a9c2364181485c",
         title = "Entry exit guidance",
-        description = "Urgently need volunteers for BookMyShow Activity in Mall",
+        description = "Need volunteers for BookMyShow Activity in Mall",
         category = "Event / Group Work",
         budget = 700,
         deadline = "Tomorrow",
@@ -96,6 +111,7 @@ val DEFAULT_SEED_TASKS: List<Task> = listOf(
         posterId = "3d46e9207cad0e7dc2742176",
         posterName = "Ravi Kiran",
         urgent = 0,
+        priority = "Medium",
         maxClaimers = 12,
         createdAt = "2026-08-23 15:29:58"
     )
@@ -191,7 +207,10 @@ class TaskRepository(
         category: String? = null,
         limit: Int = 20,
         offset: Int = 0,
-        search: String? = null
+        search: String? = null,
+        lat: Double? = null,
+        lng: Double? = null,
+        sort: String = if (lat != null && lng != null) "distance" else "newest"
     ): TasksLoadResult {
         val cleanCat = if (category.isNullOrBlank() || category.equals("All", ignoreCase = true)) null else category
         val cleanQuery = if (search.isNullOrBlank()) null else search.trim()
@@ -201,13 +220,25 @@ class TaskRepository(
             val response = api.getTasks(
                 category = cleanCat,
                 limit = apiLimit,
-                search = cleanQuery
+                offset = offset,
+                search = cleanQuery,
+                q = cleanQuery,
+                sort = sort,
+                lat = lat,
+                lng = lng
             )
 
             if (response.isSuccessful) {
                 val rawTasks = response.body() ?: emptyList()
-                AppLogger.d("TaskRepository", "Successfully fetched ${rawTasks.size} tasks from API (category=$cleanCat, search=$cleanQuery)")
-                val fetchedTasks = rawTasks.map { it.sanitized() }
+                AppLogger.d("TaskRepository", "Successfully fetched ${rawTasks.size} tasks from API (category=$cleanCat, search=$cleanQuery, sort=$sort)")
+                val fetchedTasks = rawTasks.map { raw ->
+                    val sanitized = raw.sanitized()
+                    if (lat != null && lng != null && sanitized.lat != null && sanitized.lng != null && (sanitized.distance == null || sanitized.distance == 0.0)) {
+                        sanitized.copy(distance = calculateDistanceKm(lat, lng, sanitized.lat, sanitized.lng))
+                    } else {
+                        sanitized
+                    }
+                }
                 if (fetchedTasks.isNotEmpty()) {
                     saveTasksToCache(fetchedTasks)
                 }

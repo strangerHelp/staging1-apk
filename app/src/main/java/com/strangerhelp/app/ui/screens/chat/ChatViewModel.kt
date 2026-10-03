@@ -107,6 +107,37 @@ class ChatViewModel(
         }
     }
 
+    fun loadConversation(conversationId: String) {
+        if (conversationId.isBlank()) return
+        viewModelScope.launch {
+            try {
+                // First check local DB
+                val local = com.strangerhelp.app.StrangerHelpApp.instance.database.conversationDao().getConversationById(conversationId)
+                if (local != null) {
+                    val currentList = _conversations.value
+                    if (currentList.none { it._id == local._id }) {
+                        _conversations.value = listOf(local) + currentList
+                    }
+                }
+
+                // Next fetch from API
+                val response = chatRepository.getConversation(conversationId)
+                if (response.isSuccessful) {
+                    val remote = response.body()
+                    if (remote != null && remote._id.isNotBlank()) {
+                        try {
+                            com.strangerhelp.app.StrangerHelpApp.instance.database.conversationDao().insertConversations(listOf(remote))
+                        } catch (_: Exception) {}
+                        val currentList = _conversations.value
+                        _conversations.value = listOf(remote) + currentList.filter { it._id != remote._id }
+                    }
+                }
+            } catch (e: Exception) {
+                com.strangerhelp.app.utils.AppLogger.w("ChatViewModel", "Error loading conversation $conversationId: ${e.message}")
+            }
+        }
+    }
+
     fun loadMessages(conversationId: String) {
         viewModelScope.launch {
             try {
