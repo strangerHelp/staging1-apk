@@ -1,21 +1,30 @@
 package com.strangerhelp.app.util
 
 import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import com.strangerhelp.app.R
-import com.strangerhelp.app.service.NotificationTapHandler
+import com.strangerhelp.app.service.NotificationChannels
+
+data class ChannelStatus(
+    val id: String,
+    val name: String,
+    val importance: Int,
+    val exists: Boolean
+)
+
+data class NotificationSystemReport(
+    val permissionsGranted: Boolean,
+    val notificationsEnabled: Boolean,
+    val channels: List<ChannelStatus>,
+    val allChannelsConfigured: Boolean
+)
 
 object NotificationTester {
 
-    const val CHANNEL_ID = "strangerhelp_channel"
-    const val CHANNEL_NAME = "StrangerHelp Notifications"
+    const val CHANNEL_ID = NotificationChannels.TASKS
 
     fun isNotificationPermissionGranted(context: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -29,62 +38,63 @@ object NotificationTester {
     }
 
     fun areNotificationsEnabled(context: Context): Boolean {
-        val manager = NotificationManagerCompat.from(context)
-        if (!manager.areNotificationsEnabled()) return false
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = manager.getNotificationChannel(CHANNEL_ID)
-            if (channel != null && channel.importance == NotificationManager.IMPORTANCE_NONE) {
-                return false
-            }
-        }
-        return true
+        return NotificationManagerCompat.from(context).areNotificationsEnabled()
     }
 
     fun sendTestPushNotification(
         context: Context,
         title: String = "🔔 StrangerHelp Test Notification",
         body: String = "Your notification system is working! Push alerts & deep links are operational.",
-        link: String = "/tasks"
+        link: String = "/tasks",
+        channelId: String = NotificationChannels.TASKS
     ): Boolean {
-        try {
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = "Task updates, claim alerts, and direct messages"
-                    enableVibration(true)
-                    enableLights(true)
-                }
-                notificationManager.createNotificationChannel(channel)
-            }
-
-            val notificationId = (System.currentTimeMillis() % 100000).toInt()
-            val pendingIntent = NotificationTapHandler.buildPendingIntent(
+        return try {
+            NotificationChannels.createAll(context)
+            NotificationBuilder.show(
                 context = context,
+                title = title,
+                body = body,
                 link = link,
-                notificationId = notificationId
+                channelId = channelId,
+                notificationId = (System.currentTimeMillis() % 100000).toInt()
             )
-
-            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle(title)
-                .setContentText(body)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
-                .build()
-
-            notificationManager.notify(notificationId, notification)
-            return true
+            true
         } catch (e: Exception) {
-            android.util.Log.e("NotificationTester", "Failed to dispatch test notification", e)
-            return false
+            com.strangerhelp.app.utils.AppLogger.e("NotificationTester", "Failed to dispatch test notification", e)
+            false
         }
+    }
+
+    fun runSystemDiagnostics(context: Context): NotificationSystemReport {
+        NotificationChannels.createAll(context)
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
+        val channelIds = listOf(
+            NotificationChannels.DEFAULT,
+            NotificationChannels.TASKS,
+            NotificationChannels.MESSAGES,
+            NotificationChannels.PROOF,
+            NotificationChannels.PROMOTIONS
+        )
+        val channelStatuses = channelIds.map { id ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm != null) {
+                val ch = nm.getNotificationChannel(id)
+                ChannelStatus(
+                    id = id,
+                    name = ch?.name?.toString() ?: id,
+                    importance = ch?.importance ?: -1,
+                    exists = ch != null
+                )
+            } else {
+                ChannelStatus(id = id, name = id, importance = 3, exists = true)
+            }
+        }
+        val perm = isNotificationPermissionGranted(context)
+        val enabled = areNotificationsEnabled(context)
+        return NotificationSystemReport(
+            permissionsGranted = perm,
+            notificationsEnabled = enabled,
+            channels = channelStatuses,
+            allChannelsConfigured = channelStatuses.all { it.exists }
+        )
     }
 }

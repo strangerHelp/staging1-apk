@@ -68,6 +68,7 @@ import com.strangerhelp.app.ui.screens.wallet.WalletScreen
 import com.strangerhelp.app.ui.screens.leaderboard.LeaderboardScreen
 import com.strangerhelp.app.ui.screens.pulse.PulseScreen
 import com.strangerhelp.app.ui.screens.notifications.NotificationsScreen
+import com.strangerhelp.app.ui.screens.notifications.NotificationDevTestScreen
 import com.strangerhelp.app.ui.screens.path.PathSetupScreen
 import com.strangerhelp.app.ui.screens.path.PathActiveScreen
 
@@ -87,14 +88,22 @@ fun AppNavigation(user: User, initialDeepLink: String? = null, onLogout: () -> U
     val chatViewModel: ChatViewModel = viewModel()
 
     LaunchedEffect(Unit) {
+        if (!initialDeepLink.isNullOrBlank()) {
+            DeepLinkHandler.handleLink(initialDeepLink)
+        }
         DeepLinkHandler.links.collect { link ->
             val route = when (link) {
                 is DeepLink.TaskDetail -> "task/${link.taskId}"
                 is DeepLink.ChatDetail -> "chat/${link.conversationId}"
                 is DeepLink.UserProfile -> "profile/${link.userId}"
                 is DeepLink.MeetDetail -> "meet_detail/${link.meetId}"
+                is DeepLink.AskDetail -> "ask_detail/${link.questionId}"
                 is DeepLink.ResetPassword -> "reset-password?token=${link.token}"
                 is DeepLink.VerifyEmail -> "profile"
+                DeepLink.TasksList -> Screen.Tasks.route
+                DeepLink.ChatList -> Screen.Chat.route
+                DeepLink.AskList -> "ask"
+                DeepLink.Notifications -> "notifications"
                 DeepLink.Home -> Screen.Feed.route
             }
             try {
@@ -267,6 +276,7 @@ fun AppNavigation(user: User, initialDeepLink: String? = null, onLogout: () -> U
                 }
 
                 composable("notifications") { NotificationsScreen(navController) }
+                composable("dev_notifications") { NotificationDevTestScreen(navController) }
                 composable(
                     "webview?url={url}",
                     arguments = listOf(navArgument("url") { type = NavType.StringType })

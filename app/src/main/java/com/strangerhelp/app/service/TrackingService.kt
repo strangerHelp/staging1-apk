@@ -71,18 +71,41 @@ class TrackingService : Service() {
             return START_NOT_STICKY
         }
 
+        val hasPerm = androidx.core.content.ContextCompat.checkSelfPermission(
+            this, android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            this, android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (!hasPerm) {
+            Log.w(TAG, "Location permission missing; cannot start TrackingService.")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         val notification = buildNotification()
 
-        // Android 10+ requires the FGS type to be declared explicitly
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ServiceCompat.startForeground(
-                this,
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        try {
+            // Android 10+ requires the FGS type to be declared explicitly
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ServiceCompat.startForeground(
+                    this,
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: SecurityException) {
+            Log.w(TAG, "SecurityException starting TrackingService", e)
+            stopSelf()
+            return START_NOT_STICKY
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to start TrackingService", e)
+            stopSelf()
+            return START_NOT_STICKY
         }
 
         startLocationUpdates()
@@ -225,14 +248,35 @@ class TrackingService : Service() {
         const val ACTION_STOP = "com.strangerhelp.app.STOP_TRACKING"
 
         /** Start the foreground tracking service for the given task. */
-        fun start(context: Context, taskId: String) {
+        fun start(context: Context, taskId: String): Boolean {
+            val hasPerm = androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            if (!hasPerm) {
+                Log.w(TAG, "Cannot start TrackingService: location permission is missing.")
+                return false
+            }
+
             val intent = Intent(context, TrackingService::class.java).apply {
                 putExtra(EXTRA_TASK_ID, taskId)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            return try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+                true
+            } catch (e: SecurityException) {
+                Log.w(TAG, "SecurityException starting TrackingService", e)
+                false
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to start TrackingService", e)
+                false
             }
         }
 

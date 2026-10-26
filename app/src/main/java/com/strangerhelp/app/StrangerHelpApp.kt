@@ -13,6 +13,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import com.strangerhelp.app.worker.SyncWorker
 import androidx.room.Room
 import com.strangerhelp.app.data.local.AppDatabase
+import com.strangerhelp.app.service.NotificationChannels
 import com.strangerhelp.app.utils.AppLogger
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
@@ -26,6 +27,7 @@ class StrangerHelpApp : Application(), ImageLoaderFactory {
         super.onCreate()
         
         instance = this
+        NotificationChannels.createAll(this)
         
         database = Room.databaseBuilder(
             applicationContext,

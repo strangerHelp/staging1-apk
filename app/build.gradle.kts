@@ -12,8 +12,8 @@ android {
         applicationId = "com.strangerhelp.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0.1"
+        versionCode = 5
+        versionName = "1.0.3"
 
         vectorDrawables.useSupportLibrary = true
     }

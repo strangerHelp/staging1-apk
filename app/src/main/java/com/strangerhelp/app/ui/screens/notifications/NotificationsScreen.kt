@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
@@ -102,6 +103,16 @@ fun NotificationsScreen(
                 title = { Text("Notifications", fontWeight = FontWeight.Bold) },
                 actions = {
                     IconButton(
+                        onClick = { navController.navigate("dev_notifications") },
+                        modifier = Modifier.testTag("btn_top_dev_simulator")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.BugReport,
+                            contentDescription = "FCM Payload Simulator",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(
                         onClick = { triggerTestNotification() },
                         modifier = Modifier.testTag("btn_test_notification")
                     ) {
@@ -156,7 +167,8 @@ fun NotificationsScreen(
                             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
                     },
-                    onSendTest = { triggerTestNotification() }
+                    onSendTest = { triggerTestNotification() },
+                    onOpenSimulator = { navController.navigate("dev_notifications") }
                 )
             }
         } else {
@@ -177,6 +189,7 @@ fun NotificationsScreen(
                             }
                         },
                         onSendTest = { triggerTestNotification() },
+                        onOpenSimulator = { navController.navigate("dev_notifications") },
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
@@ -204,6 +217,7 @@ private fun NotificationTestCard(
     hasPermission: Boolean,
     onRequestPermission: () -> Unit,
     onSendTest: () -> Unit,
+    onOpenSimulator: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -254,7 +268,7 @@ private fun NotificationTestCard(
 
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Channel: strangerhelp_channel • Status bar push alerts & deep links",
+                text = "Channels configured • Push alerts & deep links operational",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -284,6 +298,20 @@ private fun NotificationTestCard(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Send Test Push", fontSize = 13.sp)
                 }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onOpenSimulator,
+                modifier = Modifier.fillMaxWidth().testTag("btn_open_fcm_simulator")
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.BugReport,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Open FCM Payload Simulator (Dev Tools)", fontSize = 12.sp)
             }
         }
     }

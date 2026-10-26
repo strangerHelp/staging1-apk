@@ -606,6 +606,7 @@ class TaskDetailViewModel(
             }
 
             // 2. Start the foreground service
+            com.strangerhelp.app.service.WorkerTrackingService.start(context, taskId)
             com.strangerhelp.app.service.TrackingService.start(context, taskId)
             _isTracking.value = true
             loadTask(taskId)
@@ -614,6 +615,7 @@ class TaskDetailViewModel(
 
     fun stopTracking(taskId: String, context: android.content.Context) {
         viewModelScope.launch {
+            com.strangerhelp.app.service.WorkerTrackingService.stop(context)
             com.strangerhelp.app.service.TrackingService.stop(context)
             runCatching {
                 taskRepository.patchTask(taskId, mapOf("action" to "stop_tracking"))

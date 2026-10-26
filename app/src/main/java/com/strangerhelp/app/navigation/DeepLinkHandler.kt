@@ -2,7 +2,7 @@ package com.strangerhelp.app.navigation
 
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
+import com.strangerhelp.app.utils.AppLogger
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -24,8 +24,13 @@ sealed class DeepLink {
     data class ChatDetail(val conversationId: String) : DeepLink()
     data class UserProfile(val userId: String) : DeepLink()
     data class MeetDetail(val meetId: String) : DeepLink()
+    data class AskDetail(val questionId: String) : DeepLink()
     data class ResetPassword(val token: String) : DeepLink()
     data class VerifyEmail(val token: String) : DeepLink()
+    object TasksList : DeepLink()
+    object ChatList : DeepLink()
+    object AskList : DeepLink()
+    object Notifications : DeepLink()
     object Home : DeepLink()
 }
 
@@ -41,10 +46,10 @@ object DeepLinkHandler {
 
     /** Call this from MainActivity.onCreate and onNewIntent. */
     fun handleIntent(intent: Intent?) {
-        val uri = intent?.data
-        if (uri != null) {
-            val parsed = parse(uri) ?: return
-            Log.d(TAG, "Emitting deep link from uri: $parsed")
+        val uriString = intent?.dataString
+        if (!uriString.isNullOrBlank()) {
+            val parsed = parse(uriString) ?: return
+            AppLogger.d(TAG, "Emitting deep link from uri: $parsed")
             _links.tryEmit(parsed)
             return
         }
@@ -57,64 +62,97 @@ object DeepLinkHandler {
     /** Call this from notification click payloads that carry a raw link. */
     fun handleLink(link: String) {
         if (link.isBlank()) return
-        val normalizedUri = if (link.startsWith("/") || (!link.contains("://") && !link.startsWith("strangerhelp:"))) {
-            Uri.parse("https://strangerhelp.com/" + link.trimStart('/'))
-        } else {
-            Uri.parse(link)
-        }
-        val parsed = parse(normalizedUri) ?: return
-        Log.d(TAG, "Emitting deep link from payload: $parsed")
+        val parsed = parse(link) ?: return
+        AppLogger.d(TAG, "Emitting deep link from payload: $parsed")
         _links.tryEmit(parsed)
     }
 
-    private fun parse(uri: Uri): DeepLink? {
-        // Normalise: strip scheme/host if full URL, keep path only
-        val rawPath = when {
-            uri.scheme == "https" || uri.scheme == "http" -> uri.path ?: return null
-            uri.scheme == "strangerhelp" -> "/" + (uri.host ?: "") + (uri.path ?: "")
-            else -> uri.toString()
+    fun parse(uri: Uri): DeepLink? = parse(uri.toString())
+
+    fun parse(rawLink: String): DeepLink? {
+        val trimmed = rawLink.trim()
+        if (trimmed.isEmpty()) return DeepLink.Home
+
+        // Extract query string if any
+        val queryPart = if (trimmed.contains('?')) trimmed.substringAfter('?').substringBefore('#') else ""
+        val withoutQuery = trimmed.substringBefore('?').substringBefore('#')
+
+        // Strip scheme and host
+        val pathOnly = when {
+            withoutQuery.startsWith("https://") -> withoutQuery.removePrefix("https://").substringAfter('/', "")
+            withoutQuery.startsWith("http://") -> withoutQuery.removePrefix("http://").substringAfter('/', "")
+            withoutQuery.startsWith("strangerhelp://") -> {
+                val afterScheme = withoutQuery.removePrefix("strangerhelp://").trimStart('/')
+                if (afterScheme.startsWith("strangerhelp.com/")) {
+                    afterScheme.removePrefix("strangerhelp.com/")
+                } else {
+                    afterScheme
+                }
+            }
+            withoutQuery.startsWith("/") -> withoutQuery.trimStart('/')
+            else -> withoutQuery
         }
 
-        val path = rawPath.trimStart('/').trimEnd('/')
-        val segments = path.split('/').filter { it.isNotEmpty() }
+        val cleanPath = pathOnly.trimStart('/').trimEnd('/')
+        val segments = cleanPath.split('/').filter { it.isNotBlank() }
 
-        Log.d(TAG, "Parsed path=$path segments=$segments query=${uri.query}")
+        AppLogger.d(TAG, "Parsed path=$cleanPath segments=$segments query=$queryPart")
 
         if (segments.isEmpty()) return DeepLink.Home
 
+        fun getQueryParam(key: String): String? {
+            if (queryPart.isEmpty()) return null
+            val pairs = queryPart.split('&')
+            for (pair in pairs) {
+                val parts = pair.split('=', limit = 2)
+                if (parts[0].equals(key, ignoreCase = true)) {
+                    return parts.getOrNull(1)
+                }
+            }
+            return null
+        }
+
         return when (segments[0].lowercase()) {
             "tasks", "task", "task_detail" -> {
-                val id = segments.getOrNull(1)?.substringBefore('?') ?: return DeepLink.Home
-                val cleanId = id.trim().removeSurrounding("\"")
-                if (cleanId.isBlank()) DeepLink.Home else DeepLink.TaskDetail(cleanId)
+                val id = segments.getOrNull(1)
+                val cleanId = id?.trim()?.removeSurrounding("\"")
+                if (cleanId.isNullOrBlank()) DeepLink.TasksList else DeepLink.TaskDetail(cleanId)
             }
             "chat", "messages" -> {
-                val id = segments.getOrNull(1)?.substringBefore('?') ?: return DeepLink.Home
-                if (id.isBlank()) DeepLink.Home else DeepLink.ChatDetail(id)
+                val id = segments.getOrNull(1)
+                val cleanId = id?.trim()?.removeSurrounding("\"")
+                if (cleanId.isNullOrBlank()) DeepLink.ChatList else DeepLink.ChatDetail(cleanId)
             }
             "user", "users", "profile" -> {
-                val id = segments.getOrNull(1)?.substringBefore('?') ?: return DeepLink.Home
-                if (id.isBlank()) DeepLink.Home else DeepLink.UserProfile(id)
+                val id = segments.getOrNull(1)
+                if (id.isNullOrBlank()) DeepLink.Home else DeepLink.UserProfile(id)
             }
-            "meets", "meet" -> {
-                val id = segments.getOrNull(1)?.substringBefore('?') ?: return DeepLink.Home
-                if (id.isBlank()) DeepLink.Home else DeepLink.MeetDetail(id)
+            "meets", "meet", "meet_detail" -> {
+                val id = segments.getOrNull(1)
+                if (id.isNullOrBlank()) DeepLink.Home else DeepLink.MeetDetail(id)
+            }
+            "ask_detail", "ask" -> {
+                val id = segments.getOrNull(1)
+                if (id.isNullOrBlank()) DeepLink.AskList else DeepLink.AskDetail(id)
+            }
+            "notifications", "notification" -> {
+                DeepLink.Notifications
             }
             "reset-password" -> {
-                val token = uri.getQueryParameter("token") ?: return DeepLink.Home
+                val token = getQueryParam("token") ?: return DeepLink.Home
                 DeepLink.ResetPassword(token)
             }
             "verify-email" -> {
-                val token = uri.getQueryParameter("token") ?: return DeepLink.Home
+                val token = getQueryParam("token") ?: return DeepLink.Home
                 DeepLink.VerifyEmail(token)
             }
             "api" -> {
                 if (segments.getOrNull(1) == "auth" && segments.getOrNull(2) == "verify-email") {
-                    val token = uri.getQueryParameter("token") ?: return DeepLink.Home
+                    val token = getQueryParam("token") ?: return DeepLink.Home
                     DeepLink.VerifyEmail(token)
                 } else if (segments.getOrNull(1) == "tasks") {
-                    val id = segments.getOrNull(2)?.substringBefore('?') ?: return DeepLink.Home
-                    DeepLink.TaskDetail(id)
+                    val id = segments.getOrNull(2)
+                    if (id.isNullOrBlank()) DeepLink.TasksList else DeepLink.TaskDetail(id)
                 } else {
                     DeepLink.Home
                 }

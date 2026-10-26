@@ -96,6 +96,9 @@ interface StrangerHelpApi {
     @PATCH("api/tasks/{id}")
     suspend fun updateTracking(@Path("id") id: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<Map<String, Any>>
         
+    @PATCH("api/tasks/{id}")
+    suspend fun patchTask(@Path("id") id: String, @Body body: Map<String, @JvmSuppressWildcards Any>): Response<Map<String, Any>>
+        
     @Multipart
     @PATCH("api/tasks/{id}")
     suspend fun completeTask(@Path("id") id: String, @Part("action") action: okhttp3.RequestBody, @Part proof: okhttp3.MultipartBody.Part?): Response<Map<String, Any>>

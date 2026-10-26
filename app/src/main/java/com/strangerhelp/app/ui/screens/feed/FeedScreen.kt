@@ -28,6 +28,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.strangerhelp.app.ui.screens.worker.WorkerStatusCard
 import com.strangerhelp.app.ui.screens.notifications.NotificationViewModel
 import com.strangerhelp.app.ui.screens.notifications.NotificationViewModelFactory
 import androidx.compose.ui.Alignment
@@ -85,6 +86,10 @@ fun FeedScreen(
                     onNotificationClick = { navController.navigate("notifications") },
                     onAvatarClick = { navController.navigate("profile") }
                 )
+            }
+
+            item {
+                WorkerStatusCard(taskId = "")
             }
             
             item {

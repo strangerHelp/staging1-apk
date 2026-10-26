@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -341,6 +342,14 @@ fun ProfileScreen(
             ) {
                 Column {
                     MenuItemRow(icon = Icons.Outlined.Person, label = "Edit Profile", onClick = { navController.navigate("edit_profile") }, showChevron = true)
+                    Divider(color = Color(0xFFF0F0F0))
+
+                    MenuItemRow(
+                        icon = Icons.Outlined.NotificationsActive, 
+                        label = "FCM Notification Tester", 
+                        onClick = { navController.navigate("dev_notifications") }, 
+                        showChevron = true
+                    )
                     Divider(color = Color(0xFFF0F0F0))
 
                     MenuItemRow(

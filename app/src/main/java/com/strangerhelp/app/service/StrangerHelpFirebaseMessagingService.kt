@@ -1,63 +1,49 @@
 package com.strangerhelp.app.service
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.Context
-import android.content.Intent
-import android.os.Build
-import androidx.core.app.NotificationCompat
+import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import com.strangerhelp.app.MainActivity
-import com.strangerhelp.app.R
+import com.strangerhelp.app.util.NotificationBuilder
 
+/**
+ * Receives FCM data messages and displays a local notification.
+ *
+ * The backend sends DATA messages (not notification messages) so we can
+ * control the channel, icon and deep-link per event type.
+ */
 class StrangerHelpFirebaseMessagingService : FirebaseMessagingService() {
+
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        Log.d(TAG, "FCM token refreshed: $token")
+        // POST /api/push/fcm { token, deviceId } to backend
+    }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
 
         val data = remoteMessage.data
-        val title = data["title"] ?: remoteMessage.notification?.title ?: "StrangerHelp"
-        val body = data["body"] ?: remoteMessage.notification?.body ?: ""
-        val link = data["link"] ?: ""
-
-        showNotification(title, body, link)
-    }
-
-    override fun onNewToken(token: String) {
-        super.onNewToken(token)
-        // Token logic could go here to sync with backend
-    }
-
-    private fun showNotification(title: String, body: String, link: String) {
-        val notificationId = System.currentTimeMillis().toInt()
-        val pendingIntent = NotificationTapHandler.buildPendingIntent(
-            context = this,
-            link = link.ifBlank { "/tasks" },
-            notificationId = notificationId
-        )
-
-        val channelId = "strangerhelp_channel"
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "StrangerHelp Notifications",
-                NotificationManager.IMPORTANCE_HIGH
-            )
-            notificationManager.createNotificationChannel(channel)
+        if (data.isEmpty() && remoteMessage.notification == null) {
+            Log.w(TAG, "Empty data payload; ignoring.")
+            return
         }
 
-        val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle(title)
-            .setContentText(body)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
+        val title = data["title"] ?: remoteMessage.notification?.title ?: "StrangerHelp"
+        val body = data["body"] ?: remoteMessage.notification?.body ?: ""
+        val link = data["link"] ?: ""          // e.g. /tasks/abc123
+        val type = data["type"] ?: "general"   // task_claimed, message, proof, etc.
 
-        notificationManager.notify(notificationId, notification)
+        val channel = NotificationChannels.resolve(type)
+
+        NotificationBuilder.show(
+            context = this,
+            title = title,
+            body = body,
+            link = link,
+            channelId = channel,
+            notificationId = System.currentTimeMillis().toInt()
+        )
     }
+
+    companion object { private const val TAG = "FCMService" }
 }
