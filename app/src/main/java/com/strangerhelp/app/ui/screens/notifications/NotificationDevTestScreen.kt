@@ -314,7 +314,10 @@ fun NotificationDevTestScreen(
             }
 
             // Navigation Tabs
-            TabRow(selectedTabIndex = selectedTab) {
+            ScrollableTabRow(
+                selectedTabIndex = selectedTab,
+                edgePadding = 8.dp
+            ) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
@@ -332,6 +335,12 @@ fun NotificationDevTestScreen(
                     onClick = { selectedTab = 2 },
                     text = { Text("Channels") },
                     icon = { Icon(Icons.Outlined.Tune, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                )
+                Tab(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    text = { Text("Crash Tests 🛡️") },
+                    icon = { Icon(Icons.Outlined.Shield, contentDescription = null, modifier = Modifier.size(18.dp)) }
                 )
             }
 
@@ -406,6 +415,10 @@ fun NotificationDevTestScreen(
                 2 -> {
                     // Channel Inspector Tab
                     ChannelInspector(context = context)
+                }
+                3 -> {
+                    // Crash & Resilience Testing Tab
+                    CrashTestingPane(context = context)
                 }
             }
         }
@@ -802,6 +815,214 @@ private fun ChannelInspector(context: Context) {
                     ) {
                         Text("Configure Channel in OS Settings", fontSize = 12.sp)
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CrashTestingPane(context: Context) {
+    var suiteResult by remember { mutableStateOf<com.strangerhelp.app.util.CrashSuiteResult?>(null) }
+    var isRunningSuite by remember { mutableStateOf(false) }
+    var lastActionMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Crash & Resilience Test Suite", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Stress-test notification building, oversized 50KB payloads, Unicode/emojis, malformed deep links, missing channels, and FGS permission safety to verify the app cannot be crashed by corrupted inputs.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        item {
+            Button(
+                onClick = {
+                    isRunningSuite = true
+                    coroutineScope.launch {
+                        delay(200)
+                        suiteResult = NotificationTester.runCrashResilienceTests(context)
+                        isRunningSuite = false
+                        lastActionMessage = "Full suite completed: ${suiteResult?.passedCount}/${suiteResult?.total} resilience tests passed!"
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp).testTag("btn_run_crash_suite"),
+                enabled = !isRunningSuite
+            ) {
+                if (isRunningSuite) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Running Stress & Crash Tests...")
+                } else {
+                    Icon(Icons.Outlined.PlayArrow, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Run All Automated Crash Tests")
+                }
+            }
+        }
+
+        if (lastActionMessage != null) {
+            item {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(lastActionMessage!!, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                }
+            }
+        }
+
+        suiteResult?.let { result ->
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (result.allPassed) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Suite Result: ${if (result.allPassed) "ALL TESTS PASSED ✅" else "TESTS FAILED ⚠️"}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("${result.passedCount} of ${result.total} resilience barriers verified", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Surface(
+                            color = if (result.allPassed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text(
+                                text = "${result.passedCount}/${result.total}",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            items(result.items, key = { it.id }) { item ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(item.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Surface(
+                                color = if (item.passed) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = if (item.passed) "PASSED" else "FAILED",
+                                    color = if (item.passed) Color(0xFF2E7D32) else Color(0xFFC62828),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(item.description, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(item.details, fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Individual Crash Simulation Triggers", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("Trigger individual edge-case pushes directly to your status bar", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        NotificationTester.sendTestPushNotification(context, title = "", body = "", link = "")
+                        lastActionMessage = "Dispatched empty string payload notification"
+                    },
+                    modifier = Modifier.weight(1f).testTag("btn_trigger_empty_crash")
+                ) {
+                    Text("Empty Strings", fontSize = 11.sp)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        val huge = "StrangerHelp Stress Data ".repeat(500)
+                        NotificationTester.sendTestPushNotification(context, title = "Oversized Test", body = huge, link = "/tasks")
+                        lastActionMessage = "Dispatched 12KB BigTextStyle payload"
+                    },
+                    modifier = Modifier.weight(1f).testTag("btn_trigger_huge_crash")
+                ) {
+                    Text("12KB BigText", fontSize = 11.sp)
+                }
+            }
+        }
+
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        NotificationTester.sendTestPushNotification(
+                            context,
+                            title = "Unicode: 🔔🔥🚀❤️\u0000\uFFFF",
+                            body = "Glyphs: \uD83D\uDE00 \uD83D\uDE04 \uD83D\uDE02",
+                            link = "/tasks"
+                        )
+                        lastActionMessage = "Dispatched Unicode emoji notification"
+                    },
+                    modifier = Modifier.weight(1f).testTag("btn_trigger_unicode_crash")
+                ) {
+                    Text("Unicode/Emoji", fontSize = 11.sp)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        DeepLinkHandler.handleLink("strangerhelp://///??invalid=%%%")
+                        lastActionMessage = "Parsed corrupted URI — safely handled"
+                    },
+                    modifier = Modifier.weight(1f).testTag("btn_trigger_malformed_link")
+                ) {
+                    Text("Bad DeepLink", fontSize = 11.sp)
                 }
             }
         }
