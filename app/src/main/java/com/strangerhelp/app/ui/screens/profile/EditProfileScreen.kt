@@ -41,16 +41,16 @@ import java.io.File
 @Composable
 fun EditProfileScreen(
     navController: NavController,
-    user: User,
+    user: User?,
     viewModel: ProfileViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    var name by remember { mutableStateOf(user.name) }
-    var handle by remember { mutableStateOf(user.handle ?: "") }
-    var bio by remember { mutableStateOf(user.bio.ifBlank { "Urban explorer and foodie." }) }
-    var city by remember { mutableStateOf(user.city ?: "") }
-    var locality by remember { mutableStateOf(user.area.ifBlank { "Koramangala" }) }
-    var phone by remember { mutableStateOf(user.phone.ifBlank { "+91 98765 43210" }) }
+    var name by remember(user) { mutableStateOf(user?.name.orEmpty()) }
+    var handle by remember(user) { mutableStateOf(user?.handle.orEmpty()) }
+    var bio by remember(user) { mutableStateOf(user?.bio?.takeIf { it.isNotBlank() } ?: "Urban explorer and foodie.") }
+    var city by remember(user) { mutableStateOf(user?.city.orEmpty()) }
+    var locality by remember(user) { mutableStateOf(user?.area?.takeIf { it.isNotBlank() } ?: "Koramangala") }
+    var phone by remember(user) { mutableStateOf(user?.phone?.takeIf { it.isNotBlank() } ?: "+91 98765 43210") }
     
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var selectedImageFile by remember { mutableStateOf<File?>(null) }
@@ -68,13 +68,23 @@ fun EditProfileScreen(
     
     val handleError = handle == "ravi_kumar" // Mock error state
 
+    androidx.activity.compose.BackHandler {
+        if (!navController.popBackStack()) {
+            navController.navigate("profile")
+        }
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Edit Profile", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { 
+                        if (!navController.popBackStack()) {
+                            navController.navigate("profile")
+                        }
+                    }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -166,8 +176,8 @@ fun EditProfileScreen(
                     )
                 } else {
                     UserAvatar(
-                        avatarUrl = user.avatar,
-                        name = name.ifBlank { user.name },
+                        avatarUrl = user?.avatar.orEmpty(),
+                        name = name.takeIf { it.isNotBlank() } ?: user?.name.orEmpty(),
                         size = 100.dp,
                         showEditBadge = true,
                         onClick = {

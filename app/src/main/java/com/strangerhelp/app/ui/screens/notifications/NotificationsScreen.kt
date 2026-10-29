@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Notifications
@@ -97,10 +98,31 @@ fun NotificationsScreen(
         }
     }
 
+    androidx.activity.compose.BackHandler {
+        if (!navController.popBackStack()) {
+            navController.navigate("feed")
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Notifications", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(
+                        onClick = {
+                            if (!navController.popBackStack()) {
+                                navController.navigate("feed")
+                            }
+                        },
+                        modifier = Modifier.testTag("btn_notifications_back")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
                 actions = {
                     IconButton(
                         onClick = { navController.navigate("dev_notifications") },

@@ -30,12 +30,22 @@ fun MeetDetailScreen(
         viewModel.loadMeet(meetId)
     }
 
+    androidx.activity.compose.BackHandler {
+        if (!navController.popBackStack()) {
+            navController.navigate("meets")
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Meet Details") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { 
+                        if (!navController.popBackStack()) {
+                            navController.navigate("meets")
+                        }
+                    }) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
                 },
@@ -44,7 +54,9 @@ fun MeetDetailScreen(
                         if (currentUser?.id == m.hostId) {
                             IconButton(onClick = {
                                 viewModel.deleteMeet(m.id)
-                                navController.popBackStack()
+                                if (!navController.popBackStack()) {
+                                    navController.navigate("meets")
+                                }
                             }) {
                                 Icon(Icons.Default.Delete, "Delete", tint = com.strangerhelp.app.ui.screens.meets.Warning)
                             }
@@ -63,7 +75,11 @@ fun MeetDetailScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("❌", fontSize = 48.sp)
                     Text(error ?: "Meet not found", fontSize = 16.sp, color = Body)
-                    Button(onClick = { navController.popBackStack() }) { Text("Go Back") }
+                    Button(onClick = { 
+                        if (!navController.popBackStack()) {
+                            navController.navigate("meets")
+                        }
+                    }) { Text("Go Back") }
                 }
             }
         } else {

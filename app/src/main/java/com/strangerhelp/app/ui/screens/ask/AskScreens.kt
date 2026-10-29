@@ -455,12 +455,22 @@ fun AskDetailScreen(
         viewModel.loadQuestion(questionId)
     }
 
+    androidx.activity.compose.BackHandler {
+        if (!navController.popBackStack()) {
+            navController.navigate("ask")
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Question") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { 
+                        if (!navController.popBackStack()) {
+                            navController.navigate("ask")
+                        }
+                    }) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
                 },

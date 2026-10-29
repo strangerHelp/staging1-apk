@@ -1079,7 +1079,7 @@ fun TaskCard(task: Task, isOffline: Boolean = false, onClick: () -> Unit) {
             Spacer(Modifier.height(12.dp))
             
             // Location & Deadline
-            val locText = task.location.orEmpty().split(",").firstOrNull()?.trim().orEmpty().ifBlank { task.city.ifBlank { "Location" } }
+            val locText = task.location.orEmpty().split(",").firstOrNull()?.trim().orEmpty().ifBlank { task.city.orEmpty().ifBlank { "Location" } }
             val deadlineText = task.deadline.orEmpty().ifBlank { "Today" }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(14.dp), tint = androidx.compose.ui.graphics.Color(0xFF666666))

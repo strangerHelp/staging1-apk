@@ -256,6 +256,12 @@ fun NotificationDevTestScreen(
         }
     }
 
+    androidx.activity.compose.BackHandler {
+        if (!navController.popBackStack()) {
+            navController.navigate("notifications")
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -267,7 +273,11 @@ fun NotificationDevTestScreen(
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = { navController.popBackStack() },
+                        onClick = {
+                            if (!navController.popBackStack()) {
+                                navController.navigate("notifications")
+                            }
+                        },
                         modifier = Modifier.testTag("btn_dev_test_back")
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

@@ -76,12 +76,22 @@ fun TaskDetailScreen(
                 Spacer(Modifier.height(8.dp))
                 Text("The link did not contain a valid task identifier.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = { navController.popBackStack() }) {
+                Button(onClick = { 
+                    if (!navController.popBackStack()) {
+                        navController.navigate("feed")
+                    }
+                }) {
                     Text("Go back")
                 }
             }
         }
         return
+    }
+
+    androidx.activity.compose.BackHandler {
+        if (!navController.popBackStack()) {
+            navController.navigate("feed")
+        }
     }
 
     var showRejectionDialog by remember { mutableStateOf(false) }
@@ -112,7 +122,11 @@ fun TaskDetailScreen(
             TopAppBar(
                 title = { Text("Task Details", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { 
+                        if (!navController.popBackStack()) {
+                            navController.navigate("feed")
+                        }
+                    }) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
                 },
