@@ -139,7 +139,7 @@ fun PostCapturePreviewScreen(
                     }
 
                     Button(
-                        onClick = { showConfirmDialog = true },
+                        onClick = { onSubmitConfirmed() },
                         enabled = !isProcessing,
                         colors = ButtonDefaults.buttonColors(containerColor = Saffron),
                         modifier = Modifier

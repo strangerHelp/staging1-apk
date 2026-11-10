@@ -363,10 +363,13 @@ fun AppNavigation(user: User, initialDeepLink: String? = null, onLogout: () -> U
                         onSubmitProof = { bytes, onResult ->
                             gpsCameraViewModel.submitProof(taskId, bytes) { success ->
                                 if (success) {
+                                    android.widget.Toast.makeText(context, "Proof submitted successfully! Awaiting review.", android.widget.Toast.LENGTH_SHORT).show()
                                     onResult(true, null)
                                     navController.popBackStack()
                                 } else {
-                                    onResult(false, gpsCameraViewModel.error.value ?: "Failed to submit proof. Please try again.")
+                                    val err = gpsCameraViewModel.error.value ?: "Failed to submit proof. Please try again."
+                                    android.widget.Toast.makeText(context, err, android.widget.Toast.LENGTH_LONG).show()
+                                    onResult(false, err)
                                 }
                             }
                         },

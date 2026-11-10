@@ -79,6 +79,8 @@ fun WorkerStatusCard(
         }
     }
 
+    val restrictions by viewModel.restrictionInfo.collectAsStateWithLifecycle()
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -88,40 +90,67 @@ fun WorkerStatusCard(
             containerColor = if (isOnline) Color(0xFF101828) else Color(0xFFF5F5F5)
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .background(
-                        if (isOnline) Color(0xFF29BC9B) else Color(0xFF888888),
-                        RoundedCornerShape(50)
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(
+                            if (isOnline) Color(0xFF29BC9B) else Color(0xFF888888),
+                            RoundedCornerShape(50)
+                        )
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = status.title,
+                        color = if (isOnline) Color.White else Color(0xFF171717),
+                        style = MaterialTheme.typography.titleSmall
                     )
-            )
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = status.title,
-                    color = if (isOnline) Color.White else Color(0xFF171717),
-                    style = MaterialTheme.typography.titleSmall
-                )
-                Text(
-                    text = status.text,
-                    color = if (isOnline) Color(0xFFCCCCCC) else Color(0xFF4D4D4D),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            if (isOnline) {
-                TextButton(onClick = { viewModel.goOffline() }) {
-                    Text("Stop", color = Color(0xFFF5A623))
+                    Text(
+                        text = status.text,
+                        color = if (isOnline) Color(0xFFCCCCCC) else Color(0xFF4D4D4D),
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
-            } else {
-                TextButton(onClick = { handleGoOnline() }) {
-                    Text("Go online", color = Color(0xFF0070F3))
+                if (isOnline) {
+                    TextButton(onClick = { viewModel.goOffline() }) {
+                        Text("Stop", color = Color(0xFFF5A623))
+                    }
+                } else {
+                    TextButton(onClick = { handleGoOnline() }) {
+                        Text("Go online", color = Color(0xFF0070F3))
+                    }
+                }
+            }
+
+            if (restrictions.hasRestrictions && restrictions.restrictionSummary != null) {
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = Color(0xFFFFF3CD),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = restrictions.restrictionSummary ?: "",
+                        color = Color(0xFF856404),
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(
+                        onClick = { viewModel.handleRestrictionFix(context) },
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text("Fix", color = Color(0xFF856404), style = MaterialTheme.typography.labelSmall)
+                    }
                 }
             }
         }

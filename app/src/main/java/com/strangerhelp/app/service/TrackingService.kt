@@ -59,14 +59,42 @@ class TrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        taskId = intent?.getStringExtra(EXTRA_TASK_ID).orEmpty()
+
+        // Always promote to foreground immediately to satisfy the Android 8+ 5-second OS contract
+        val notification = buildNotification()
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ServiceCompat.startForeground(
+                    this,
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: SecurityException) {
+            Log.w(TAG, "SecurityException starting TrackingService", e)
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to start TrackingService", e)
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         // Handle the "Stop sharing" action from the notification
         if (intent?.action == ACTION_STOP) {
             stopTracking()
             return START_NOT_STICKY
         }
 
-        taskId = intent?.getStringExtra(EXTRA_TASK_ID) ?: run {
+        if (taskId.isEmpty()) {
             Log.e(TAG, "Missing taskId extra; stopping service")
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -80,30 +108,7 @@ class TrackingService : Service() {
 
         if (!hasPerm) {
             Log.w(TAG, "Location permission missing; cannot start TrackingService.")
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
-        val notification = buildNotification()
-
-        try {
-            // Android 10+ requires the FGS type to be declared explicitly
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ServiceCompat.startForeground(
-                    this,
-                    NOTIFICATION_ID,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
-        } catch (e: SecurityException) {
-            Log.w(TAG, "SecurityException starting TrackingService", e)
-            stopSelf()
-            return START_NOT_STICKY
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to start TrackingService", e)
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -264,20 +269,8 @@ class TrackingService : Service() {
             val intent = Intent(context, TrackingService::class.java).apply {
                 putExtra(EXTRA_TASK_ID, taskId)
             }
-            return try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
-                true
-            } catch (e: SecurityException) {
-                Log.w(TAG, "SecurityException starting TrackingService", e)
-                false
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to start TrackingService", e)
-                false
-            }
+            val result = com.strangerhelp.app.utils.BackgroundRestrictionHelper.safeStartForegroundService(context, intent)
+            return result is com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult.Success
         }
 
         /** Stop the foreground tracking service. */

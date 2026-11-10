@@ -155,11 +155,30 @@ fun GpsCameraScreen(
         }
     }
 
-    fun processCapturedBitmap(bmp: Bitmap) {
-        if (isProcessing) return
-        isProcessing = true
-        errorMessage = null
+    fun fixOrientation(file: File, bitmap: Bitmap): Bitmap {
+        return try {
+            val exif = android.media.ExifInterface(file.absolutePath)
+            val orientation = exif.getAttributeInt(
+                android.media.ExifInterface.TAG_ORIENTATION,
+                android.media.ExifInterface.ORIENTATION_NORMAL
+            )
+            val matrix = android.graphics.Matrix()
+            when (orientation) {
+                android.media.ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                android.media.ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                android.media.ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                else -> return bitmap
+            }
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        } catch (_: Exception) {
+            bitmap
+        }
+    }
+
+    fun processAndDisplayBitmap(bmp: Bitmap) {
         scope.launch {
+            isProcessing = true
+            errorMessage = null
             try {
                 val loc = gps.getCurrentLocation()
                 val lat = loc?.latitude ?: 0.0
@@ -175,11 +194,13 @@ fun GpsCameraScreen(
                 val sdf = java.text.SimpleDateFormat("MMM dd, yyyy • hh:mm a", java.util.Locale.getDefault())
                 capturedTimestamp = sdf.format(java.util.Date())
 
-                val stamped = try {
-                    ProofStamper.stamp(bmp, lat, lng, place, logoBitmap)
-                } catch (e: Exception) {
-                    Log.e("GpsCameraScreen", "Proof stamping failed, using original photo", e)
-                    bmp
+                val stamped = withContext(Dispatchers.IO) {
+                    try {
+                        ProofStamper.stamp(bmp, lat, lng, place, logoBitmap)
+                    } catch (e: Exception) {
+                        Log.e("GpsCameraScreen", "Proof stamping failed, using original photo", e)
+                        bmp
+                    }
                 }
                 captured = stamped
             } catch (e: Exception) {
@@ -206,7 +227,7 @@ fun GpsCameraScreen(
                         }
                     }
                     if (bmp != null) {
-                        processCapturedBitmap(bmp)
+                        processAndDisplayBitmap(bmp)
                     } else {
                         errorMessage = "Could not decode selected photo."
                         isProcessing = false
@@ -220,26 +241,81 @@ fun GpsCameraScreen(
         }
     }
 
-    // System Camera Intent launcher as a foolproof hardware fallback
-    val systemCameraLauncher = rememberLauncherForActivityResult(
+    var tempPhotoFile by remember { mutableStateOf<File?>(null) }
+
+    // System Camera Intent launcher using FileProvider URI for full-resolution photos
+    val systemCameraUriLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success) {
+            val file = tempPhotoFile
+            if (file != null && file.exists()) {
+                scope.launch {
+                    isProcessing = true
+                    errorMessage = null
+                    try {
+                        val bmp = withContext(Dispatchers.IO) {
+                            val raw = BitmapFactory.decodeFile(file.absolutePath)
+                            if (raw != null) fixOrientation(file, raw) else null
+                        }
+                        if (bmp != null) {
+                            processAndDisplayBitmap(bmp)
+                        } else {
+                            errorMessage = "Failed to load photo from system camera."
+                            isProcessing = false
+                        }
+                    } catch (e: Exception) {
+                        errorMessage = "Error loading photo: ${e.message}"
+                        isProcessing = false
+                    }
+                }
+            } else {
+                isProcessing = false
+            }
+        } else {
+            isProcessing = false
+        }
+    }
+
+    // Secondary fallback: thumbnail preview launcher
+    val systemCameraPreviewLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicturePreview()
     ) { bmp: Bitmap? ->
         if (bmp != null) {
-            processCapturedBitmap(bmp)
+            processAndDisplayBitmap(bmp)
+        } else {
+            isProcessing = false
+        }
+    }
+
+    fun launchSystemCamera() {
+        isProcessing = true
+        errorMessage = null
+        try {
+            val file = File(context.cacheDir, "camera_proof_${System.currentTimeMillis()}.jpg")
+            tempPhotoFile = file
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                file
+            )
+            systemCameraUriLauncher.launch(uri)
+        } catch (e: Exception) {
+            Log.e("GpsCameraScreen", "FileProvider failed, using preview fallback", e)
+            systemCameraPreviewLauncher.launch(null)
         }
     }
 
     val imageCapture = remember {
         ImageCapture.Builder()
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
             .build()
     }
 
     fun capturePhoto() {
         if (isProcessing) return
         if (!isCameraBound) {
-            // If in-app camera is not bound to a hardware lens, launch system camera directly
-            systemCameraLauncher.launch(null)
+            launchSystemCamera()
             return
         }
         isProcessing = true
@@ -254,12 +330,20 @@ fun GpsCameraScreen(
             executor,
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(out: ImageCapture.OutputFileResults) {
-                    val bmp = BitmapFactory.decodeFile(file.absolutePath)
-                    if (bmp != null) {
-                        processCapturedBitmap(bmp)
-                    } else {
-                        scope.launch {
-                            errorMessage = "Failed to capture image. Please try System Camera or Gallery."
+                    scope.launch {
+                        try {
+                            val bmp = withContext(Dispatchers.IO) {
+                                val raw = BitmapFactory.decodeFile(file.absolutePath)
+                                if (raw != null) fixOrientation(file, raw) else null
+                            }
+                            if (bmp != null) {
+                                processAndDisplayBitmap(bmp)
+                            } else {
+                                errorMessage = "Failed to load captured photo. Please try System Camera or Gallery."
+                                isProcessing = false
+                            }
+                        } catch (e: Exception) {
+                            errorMessage = "Error loading photo: ${e.message}"
                             isProcessing = false
                         }
                     }
@@ -267,10 +351,9 @@ fun GpsCameraScreen(
 
                 override fun onError(exc: ImageCaptureException) {
                     scope.launch {
-                        Log.e("GpsCameraScreen", "In-app capture failed", exc)
-                        errorMessage = "Capture failed: ${exc.message}. Launching system camera..."
+                        Log.e("GpsCameraScreen", "In-app capture failed: ${exc.message}", exc)
                         isProcessing = false
-                        systemCameraLauncher.launch(null)
+                        launchSystemCamera()
                     }
                 }
             }
@@ -586,7 +669,7 @@ fun GpsCameraScreen(
                 Spacer(Modifier.height(8.dp))
 
                 OutlinedButton(
-                    onClick = { systemCameraLauncher.launch(null) },
+                    onClick = { launchSystemCamera() },
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
                     Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -676,7 +759,7 @@ fun GpsCameraScreen(
                         )
                         Spacer(Modifier.height(16.dp))
                         Button(
-                            onClick = { systemCameraLauncher.launch(null) },
+                            onClick = { launchSystemCamera() },
                             modifier = Modifier.fillMaxWidth().height(48.dp)
                         ) {
                             Icon(Icons.Default.PhotoCamera, null, modifier = Modifier.size(18.dp))
@@ -761,7 +844,7 @@ fun GpsCameraScreen(
 
                     // Right: System Camera Fallback
                     IconButton(
-                        onClick = { systemCameraLauncher.launch(null) },
+                        onClick = { launchSystemCamera() },
                         modifier = Modifier
                             .size(52.dp)
                             .clip(CircleShape)

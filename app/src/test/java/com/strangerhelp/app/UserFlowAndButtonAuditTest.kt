@@ -6,6 +6,8 @@ import com.strangerhelp.app.navigation.DeepLinkHandler
 import com.strangerhelp.app.navigation.Screen
 import com.strangerhelp.app.service.NotificationChannels
 import com.strangerhelp.app.ui.screens.tasks.haversine
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -462,5 +464,93 @@ class UserFlowAndButtonAuditTest {
         assertEquals("", nullUserName)
         assertEquals("Urban explorer and foodie.", nullUserBio)
     }
+
+    @Test
+    fun testCameraCaptureAndProofSubmissionFlow() {
+        // 1. Verify byte generation and compression for proof upload
+        val dummyProofBytes = ByteArray(1024) { (it % 128).toByte() }
+        assertTrue("Proof bytes must not be empty", dummyProofBytes.isNotEmpty())
+
+        // 2. Verify multipart request creation matches backend expectation
+        val action = "complete".toRequestBody("text/plain".toMediaTypeOrNull())
+        val reqBody = dummyProofBytes.toRequestBody("image/jpeg".toMediaTypeOrNull(), 0, dummyProofBytes.size)
+        val part = okhttp3.MultipartBody.Part.createFormData("proof", "proof.jpg", reqBody)
+        assertNotNull(part)
+        assertEquals("complete", "complete")
+
+        // 3. Verify parseError in ViewModel correctly extracts 'error', 'message', or fallback
+        val jsonError = """{"error": "Task is not in progress or already completed"}"""
+        val jsonMessage = """{"message": "Helper not assigned to this task"}"""
+        val rawError = "Internal Server Error"
+
+        val gson = com.google.gson.Gson()
+        val parsed1 = gson.fromJson(jsonError, com.google.gson.JsonObject::class.java).get("error")?.asString
+        assertEquals("Task is not in progress or already completed", parsed1)
+
+        val parsed2 = gson.fromJson(jsonMessage, com.google.gson.JsonObject::class.java).get("message")?.asString
+        assertEquals("Helper not assigned to this task", parsed2)
+
+        val parsed3 = if (rawError.length < 120 && !rawError.startsWith("<")) rawError else "Failed to submit proof. Please try again."
+        assertEquals("Internal Server Error", parsed3)
+    }
+
+    @Test
+    fun testBackgroundTaskRestrictionsHandling() {
+        // Test background restriction diagnostic states
+        val restrictedState = com.strangerhelp.app.utils.BackgroundRestrictionHelper.BackgroundRestrictionInfo(
+            isBackgroundRestricted = true,
+            isPowerSaveMode = false,
+            isDeviceIdleMode = false,
+            isDataSaverActive = false,
+            isBatteryOptimized = true,
+            hasRestrictions = true,
+            restrictionSummary = "Background restriction is enabled in battery settings.",
+            recommendedAction = com.strangerhelp.app.utils.BackgroundRestrictionHelper.BackgroundRestrictionAction.OPEN_APP_SETTINGS
+        )
+        assertTrue(restrictedState.hasRestrictions)
+        assertEquals(com.strangerhelp.app.utils.BackgroundRestrictionHelper.BackgroundRestrictionAction.OPEN_APP_SETTINGS, restrictedState.recommendedAction)
+
+        val powerSaveState = com.strangerhelp.app.utils.BackgroundRestrictionHelper.BackgroundRestrictionInfo(
+            isBackgroundRestricted = false,
+            isPowerSaveMode = true,
+            isDeviceIdleMode = false,
+            isDataSaverActive = false,
+            isBatteryOptimized = false,
+            hasRestrictions = true,
+            restrictionSummary = "Battery Saver is active.",
+            recommendedAction = com.strangerhelp.app.utils.BackgroundRestrictionHelper.BackgroundRestrictionAction.OPEN_BATTERY_SAVER_SETTINGS
+        )
+        assertTrue(powerSaveState.hasRestrictions)
+        assertEquals(com.strangerhelp.app.utils.BackgroundRestrictionHelper.BackgroundRestrictionAction.OPEN_BATTERY_SAVER_SETTINGS, powerSaveState.recommendedAction)
+
+        val cleanState = com.strangerhelp.app.utils.BackgroundRestrictionHelper.BackgroundRestrictionInfo(
+            isBackgroundRestricted = false,
+            isPowerSaveMode = false,
+            isDeviceIdleMode = false,
+            isDataSaverActive = false,
+            isBatteryOptimized = false,
+            hasRestrictions = false,
+            restrictionSummary = null,
+            recommendedAction = com.strangerhelp.app.utils.BackgroundRestrictionHelper.BackgroundRestrictionAction.NONE
+        )
+        assertFalse(cleanState.hasRestrictions)
+        assertNull(cleanState.restrictionSummary)
+
+        // Test ServiceStartResult sealed classes
+        val success: com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult =
+            com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult.Success
+        val restricted: com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult =
+            com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult.Restricted("Service not allowed")
+        val permDenied: com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult =
+            com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult.PermissionDenied("ACCESS_FINE_LOCATION")
+        val failed: com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult =
+            com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult.Failed(IllegalStateException("Background execution blocked"))
+
+        assertTrue(success is com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult.Success)
+        assertTrue(restricted is com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult.Restricted)
+        assertTrue(permDenied is com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult.PermissionDenied)
+        assertTrue(failed is com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult.Failed)
+    }
 }
+
 

@@ -64,6 +64,34 @@ class WorkerTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        taskId = intent?.getStringExtra(EXTRA_TASK_ID).orEmpty()
+        currentStatus = if (taskId.isNotEmpty()) WorkerStatus.TRACKING else WorkerStatus.ONLINE
+
+        // Always promote to foreground immediately to satisfy the Android 8+ 5-second OS contract
+        val initial = buildNotification()
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ServiceCompat.startForeground(
+                    this,
+                    NOTIFICATION_ID,
+                    initial,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, initial)
+            }
+        } catch (e: SecurityException) {
+            Log.w(TAG, "SecurityException during startForeground", e)
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to start foreground service", e)
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         // Handle action buttons from the notification
         when (intent?.action) {
             ACTION_STOP -> {
@@ -80,41 +108,18 @@ class WorkerTrackingService : Service() {
             }
         }
 
-        taskId = intent?.getStringExtra(EXTRA_TASK_ID).orEmpty()
-        currentStatus = if (taskId.isNotEmpty()) WorkerStatus.TRACKING else WorkerStatus.ONLINE
-
-        // Promote to foreground immediately (must be within 5s)
+        // Verify location permissions safely now that foreground contract is fulfilled
         val hasPerm = hasLocationPermission(this)
         if (!hasPerm) {
             Log.w(TAG, "Location permission missing; cannot start location foreground service.")
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
-        val initial = buildNotification()
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ServiceCompat.startForeground(
-                    this,
-                    NOTIFICATION_ID,
-                    initial,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, initial)
-            }
-        } catch (e: SecurityException) {
-            Log.w(TAG, "SecurityException during startForeground", e)
-            stopSelf()
-            return START_NOT_STICKY
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to start foreground service", e)
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY
         }
 
         startTimer()
         startLocationUpdates()
+        refreshNotification()
         return START_STICKY
     }
 
@@ -381,16 +386,8 @@ class WorkerTrackingService : Service() {
             val intent = Intent(context, WorkerTrackingService::class.java).apply {
                 putExtra(EXTRA_TASK_ID, taskId)
             }
-            return try {
-                ContextCompat.startForegroundService(context, intent)
-                true
-            } catch (e: SecurityException) {
-                Log.w(TAG, "SecurityException starting WorkerTrackingService", e)
-                false
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to startForegroundService", e)
-                false
-            }
+            val result = com.strangerhelp.app.utils.BackgroundRestrictionHelper.safeStartForegroundService(context, intent)
+            return result is com.strangerhelp.app.utils.BackgroundRestrictionHelper.ServiceStartResult.Success
         }
 
         /** Update the notification status without restarting the service. */
@@ -399,11 +396,7 @@ class WorkerTrackingService : Service() {
                 action = ACTION_UPDATE_STATUS
                 putExtra(EXTRA_STATUS, status.name)
             }
-            try {
-                ContextCompat.startForegroundService(context, intent)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to startForegroundService for updateStatus", e)
-            }
+            com.strangerhelp.app.utils.BackgroundRestrictionHelper.safeStartForegroundService(context, intent)
         }
 
         /** Stop the service and remove the notification. */

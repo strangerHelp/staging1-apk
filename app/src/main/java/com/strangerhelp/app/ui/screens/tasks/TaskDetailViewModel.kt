@@ -605,10 +605,16 @@ class TaskDetailViewModel(
                 return@launch
             }
 
-            // 2. Start the foreground service
-            com.strangerhelp.app.service.WorkerTrackingService.start(context, taskId)
-            com.strangerhelp.app.service.TrackingService.start(context, taskId)
-            _isTracking.value = true
+            // 2. Start the foreground service safely
+            val workerStarted = com.strangerhelp.app.service.WorkerTrackingService.start(context, taskId)
+            val trackingStarted = com.strangerhelp.app.service.TrackingService.start(context, taskId)
+            if (!workerStarted && !trackingStarted) {
+                val restriction = com.strangerhelp.app.utils.BackgroundRestrictionHelper.checkRestrictions(context)
+                _trackingError.value = restriction.restrictionSummary 
+                    ?: "Could not start tracking. Please check app battery and background permissions."
+            } else {
+                _isTracking.value = true
+            }
             loadTask(taskId)
         }
     }

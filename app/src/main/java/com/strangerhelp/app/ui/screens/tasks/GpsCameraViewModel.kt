@@ -100,12 +100,15 @@ class GpsCameraViewModel(
     }
 
     private fun parseError(errorBody: String?): String {
-        if (errorBody == null) return "Something went wrong"
+        if (errorBody.isNullOrBlank()) return "Failed to submit proof. Please check your connection."
         return try {
             val json = Gson().fromJson(errorBody, JsonObject::class.java)
-            json.get("error")?.asString ?: "Something went wrong"
+            json.get("error")?.asString
+                ?: json.get("message")?.asString
+                ?: json.get("msg")?.asString
+                ?: if (errorBody.length < 120 && !errorBody.startsWith("<")) errorBody else "Failed to submit proof. Please try again."
         } catch (_: Exception) {
-            "Something went wrong"
+            if (errorBody.length < 120 && !errorBody.startsWith("<")) errorBody else "Failed to submit proof. Please try again."
         }
     }
 
